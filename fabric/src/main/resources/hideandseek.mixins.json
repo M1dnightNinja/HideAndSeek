@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.m1dnightninja.hideandseek.fabric.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "AccessorFireworkRocketEntity",
+    "AccessorPlayerSpawnPacket",
+    "AccessorTextColor"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
