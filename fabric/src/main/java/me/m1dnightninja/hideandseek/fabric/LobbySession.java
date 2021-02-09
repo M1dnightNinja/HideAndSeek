@@ -94,9 +94,9 @@ public class LobbySession extends AbstractLobbySession {
 
         ServerPlayer ent = MidnightCore.getServer().getPlayerList().getPlayer(u);
 
-        if(ent != null && !isRunning()) {
+        if(ent != null) {
             board.removePlayer(ent);
-            broadcastRawMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent("lobby.leave", this, ent));
+            if(!isShutdown()) broadcastRawMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent("lobby.leave", this, ent));
         }
     }
 

@@ -342,7 +342,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             sb.setLine(7, new TextComponent("                         "));
             sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Hiding").setStyle(Style.EMPTY.withColor(ChatFormatting.BLUE))));
             sb.setLine(5, new TextComponent("                         "));
-            sb.setLine(4, new TextComponent("Position: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
+            sb.setLine(4, new TextComponent("Role: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
             sb.setLine(3, new TextComponent("Map: ").append(TextUtil.parse(map.getName())));
             sb.setLine(2, new TextComponent("                         "));
             sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().plainCopy().append(new TextComponent(": ").append(new TextComponent(getPlayerCount() - 1 + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
@@ -422,7 +422,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         FireworkUtil.spawnFireworkExplosion(Collections.singletonList(map.getData(PositionType.SEEKER).getColor()), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.LARGE_BALL, loc);
         FireworkUtil.spawnFireworkExplosion(Collections.singletonList(new Color("FFFFFF")), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.SMALL_BALL, loc);
 
-        scoreboards.get(u).setLine(3, new TextComponent("Position: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
+        scoreboards.get(u).setLine(4, new TextComponent("Role: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
     }
 
     @Override

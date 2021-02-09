@@ -6,6 +6,7 @@ import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PositionData extends AbstractPositionData {
@@ -72,8 +73,20 @@ public class PositionData extends AbstractPositionData {
         out.fromConfig(obj, map);
 
         out.rawName = TextUtil.parse(out.getName());
-        out.rawPluralName = TextUtil.parse(out.getPluralName());
-        out.rawProperName = TextUtil.parse(out.getProperName());
+
+        if(out.pluralName == null) {
+            out.rawPluralName = out.rawName.copy().append("s");
+            out.pluralName = Component.Serializer.toJson(out.rawPluralName);
+        } else {
+            out.rawPluralName = TextUtil.parse(out.getPluralName());
+        }
+
+        if(out.properName == null) {
+            out.rawProperName = new TextComponent("The ").setStyle(out.rawName.getStyle()).append(out.rawName.copy());
+            out.properName = Component.Serializer.toJson(out.rawProperName);
+        } else {
+            out.rawProperName = TextUtil.parse(out.getProperName());
+        }
 
         return out;
     }

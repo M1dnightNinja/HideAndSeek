@@ -15,6 +15,7 @@ import me.m1dnightninja.midnightcore.api.config.ConfigProvider;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.common.JsonConfigProvider;
+import me.m1dnightninja.midnightcore.common.JsonWrapper;
 import me.m1dnightninja.midnightcore.fabric.Logger;
 import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.event.*;
@@ -74,27 +75,12 @@ public class HideAndSeek implements ModInitializer {
                 return;
             }
 
-            File out = new File(langFolder, "en_us.json");
-            try {
+        }
 
-                InputStream is = getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json");
-                FileOutputStream fos = new FileOutputStream(out);
+        if(langFolder.listFiles().length == 0) {
 
-                byte[] buffer = new byte[1024];
-                int length;
-                while((length = is.read(buffer)) > 0) {
-                    fos.write(buffer, 0, length);
-                }
-
-                is.close();
-                fos.close();
-
-            } catch(IOException | NullPointerException ex) {
-                logger.warn("Unable to copy default lang file!");
-                ex.printStackTrace();
-                return;
-            }
-
+            File f = new File(langFolder, "en_us.json");
+            new JsonWrapper(f).save();
         }
 
         JsonObject obj = new GsonBuilder().setPrettyPrinting().create().fromJson(new InputStreamReader(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json")), JsonObject.class);
@@ -271,6 +257,8 @@ public class HideAndSeek implements ModInitializer {
         api.getRegistry().clear();
 
         api.resetMainSettings();
+
+        langProvider.reloadAllEntries();
 
         loadGameModes();
         loadConfig();

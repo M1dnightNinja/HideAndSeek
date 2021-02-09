@@ -39,7 +39,6 @@ public abstract class AbstractSession {
         players.remove(u);
 
         try {
-            HideAndSeekAPI.getLogger().warn("Removing " + u.toString() + "from session " + sessionId.toString());
             onPlayerRemoved(u);
         } catch(Exception ex) {
             HideAndSeekAPI.getLogger().warn("An exception occurred while removing a player!");

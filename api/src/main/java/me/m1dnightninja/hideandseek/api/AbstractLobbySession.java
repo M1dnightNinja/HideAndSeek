@@ -26,11 +26,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
         if(startTimer == null) {
 
-            System.out.println("hmmmm");
-
             if (getPlayerCount() == lobby.getMinPlayers()) {
-
-                System.out.println("starting");
 
                 startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, new AbstractTimer.TimerCallback() {
                     @Override

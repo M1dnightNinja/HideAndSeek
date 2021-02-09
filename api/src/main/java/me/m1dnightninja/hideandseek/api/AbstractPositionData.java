@@ -23,8 +23,6 @@ public abstract class AbstractPositionData {
         this.classes = new ArrayList<>();
 
         this.name = type.name;
-        this.pluralName = name + "s";
-        this.properName = "The " + name;
         this.color = type.defaultColor;
     }
 
@@ -41,11 +39,11 @@ public abstract class AbstractPositionData {
     }
 
     public String getPluralName() {
-        return pluralName;
+        return pluralName == null ? name : pluralName;
     }
 
     public String getProperName() {
-        return properName;
+        return properName == null ? name : properName;
     }
 
     public Color getColor() {
@@ -56,8 +54,6 @@ public abstract class AbstractPositionData {
 
         if(sec.has("name", String.class)) {
             name = sec.getString("name");
-            pluralName = name + "s";
-            properName = "The " + name;
         }
 
         if(sec.has("name_plural", String.class)) {
