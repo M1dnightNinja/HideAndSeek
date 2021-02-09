@@ -56,6 +56,8 @@ public abstract class AbstractPositionData {
 
         if(sec.has("name", String.class)) {
             name = sec.getString("name");
+            pluralName = name + "s";
+            properName = "The " + name;
         }
 
         if(sec.has("name_plural", String.class)) {

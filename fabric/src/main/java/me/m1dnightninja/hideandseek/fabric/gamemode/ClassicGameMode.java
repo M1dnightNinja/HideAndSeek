@@ -10,14 +10,11 @@ import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
 import me.m1dnightninja.hideandseek.fabric.util.FireworkUtil;
-import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.CustomScoreboard;
-import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
-import me.m1dnightninja.midnightcore.fabric.api.Timer;
 import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
@@ -54,7 +51,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             if(event.getPacket() instanceof ClientboundAddPlayerPacket) {
 
                 UUID id = ((AccessorPlayerSpawnPacket) event.getPacket()).getPlayerId();
-                if(hidden.get(event.getPlayer().getUUID()).contains(id)) {
+                if(hidden.containsKey(event.getPlayer().getUUID()) && hidden.get(event.getPlayer().getUUID()).contains(id)) {
                     event.setCancelled(true);
                 }
             }
@@ -63,7 +60,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
                 int id = ((AccessorMoveEntityPacket) event.getPacket()).getEntityId();
                 Entity ent = currentMap.getWorld().getEntity(id);
 
-                if(ent instanceof ServerPlayer && hidden.get(event.getPlayer().getUUID()).contains(ent.getUUID())) {
+                if(ent instanceof ServerPlayer && hidden.containsKey(event.getPlayer().getUUID()) && hidden.get(event.getPlayer().getUUID()).contains(ent.getUUID())) {
                     event.setCancelled(true);
                 }
 

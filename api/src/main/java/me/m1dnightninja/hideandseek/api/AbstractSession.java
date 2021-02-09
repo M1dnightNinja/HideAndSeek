@@ -4,7 +4,6 @@ import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,9 +34,17 @@ public abstract class AbstractSession {
 
     public final void removePlayer(UUID u) {
 
+        if(!players.contains(u)) return;
+
         players.remove(u);
 
-        onPlayerRemoved(u);
+        try {
+            HideAndSeekAPI.getLogger().warn("Removing " + u.toString() + "from session " + sessionId.toString());
+            onPlayerRemoved(u);
+        } catch(Exception ex) {
+            HideAndSeekAPI.getLogger().warn("An exception occurred while removing a player!");
+            ex.printStackTrace();
+        }
 
         ISavePointModule mod = MidnightCoreAPI.getInstance().getModule(ISavePointModule.class);
         mod.loadPlayer(u, sessionId.toString());
@@ -73,10 +80,16 @@ public abstract class AbstractSession {
 
     public final void shutdown() {
 
+        if(shutdown) return;
         shutdown = true;
 
-        for(int i = 0 ; i < players.size() ; i++) {
-            removePlayer(players.get(0));
+        int rem = players.size();
+        for(int i = 0 ; i < rem ; i++) {
+            try {
+                removePlayer(players.get(0));
+            } catch(Exception ex) {
+                ex.printStackTrace();
+            }
         }
 
         for(SessionCallback cb : callbacks) {

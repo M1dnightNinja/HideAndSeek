@@ -37,11 +37,6 @@ public abstract class AbstractGameInstance extends AbstractSession {
         return lobby.getPlayerCount();
     }
 
-    @Override
-    protected void onShutdown() {
-        lobby.shutdown();
-    }
-
     protected void setPosition(UUID u, PositionType type) {
         positions.put(u, type);
     }

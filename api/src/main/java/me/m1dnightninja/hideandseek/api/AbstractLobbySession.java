@@ -25,7 +25,13 @@ public abstract class AbstractLobbySession extends AbstractSession {
     protected void onPlayerAdded(UUID u) {
 
         if(startTimer == null) {
-            if (getPlayerCount() + 1 == lobby.getMinPlayers()) {
+
+            System.out.println("hmmmm");
+
+            if (getPlayerCount() == lobby.getMinPlayers()) {
+
+                System.out.println("starting");
+
                 startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, new AbstractTimer.TimerCallback() {
                     @Override
                     public void tick(int secondsLeft) { }
@@ -36,7 +42,6 @@ public abstract class AbstractLobbySession extends AbstractSession {
                         startGame(null, null);
                     }
                 });
-                startTimer.addPlayer(u);
                 for (UUID o : getPlayerIds()) {
                     startTimer.addPlayer(o);
                 }
@@ -70,11 +75,12 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
     @Override
     protected void onPlayerRemoved(UUID u) {
-        if(getPlayerCount() < lobby.getMinPlayers() && startTimer != null) {
-            startTimer.cancel();
-        }
         if(isRunning()) {
             runningInstance.removePlayer(u);
+
+        } else if(getPlayerCount() < lobby.getMinPlayers() && startTimer != null) {
+            startTimer.cancel();
+            startTimer = null;
         }
     }
 

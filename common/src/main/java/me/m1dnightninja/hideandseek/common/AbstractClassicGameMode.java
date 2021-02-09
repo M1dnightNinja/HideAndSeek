@@ -130,12 +130,6 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     }
 
     @Override
-    protected void onPlayerRemoved(UUID u) {
-
-        checkVictory();
-    }
-
-    @Override
     public final void onDamaged(UUID u, UUID damager, DamageSource source, float amount) {
 
         if(state == ClassicGameState.SEEKING && positions.containsKey(u) && !positions.get(u).isSeeker()) {
@@ -164,14 +158,11 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             toTeleport.add(u);
         }
 
-        checkVictory();
-
     }
 
     @Override
     protected void onShutdown() {
         cancelTimers();
-        super.onShutdown();
         unloadWorld();
     }
 
@@ -254,9 +245,12 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     protected abstract void broadcastVictoryTitle(PositionType winner);
 
     protected void setPlayerSeeker(UUID player) {
+
         positions.put(player, PositionType.SEEKER);
         hiderTimer.removePlayer(player);
         seekerTimer.addPlayer(player);
+
+        checkVictory();
     }
 
     protected String getKey(String key, PositionType optional) {
