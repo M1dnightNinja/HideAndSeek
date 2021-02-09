@@ -1,18 +1,21 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import me.m1dnightninja.hideandseek.api.AbstractMap;
-import me.m1dnightninja.hideandseek.api.AbstractPositionData;
-import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.api.PositionType;
+import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 public class MapInstance {
 
@@ -25,9 +28,12 @@ public class MapInstance {
     private ServerScoreboard scoreboard;
     private final HashMap<PositionType, PlayerTeam> teams = new HashMap<>();
 
-    public MapInstance(AbstractMap base, ServerLevel world, boolean createTeams) {
+    private final AbstractSession session;
+
+    public MapInstance(AbstractSession session, AbstractMap base, ServerLevel world, boolean createTeams) {
         this.base = base;
         this.world = world;
+        this.session = session;
 
         hiderSpawn = new Location(world.dimension().location(), base.getHiderSpawn().getX(), base.getHiderSpawn().getY(), base.getHiderSpawn().getZ(), base.getHiderRotation(), 0);
         seekerSpawn = new Location(world.dimension().location(), base.getSeekerSpawn().getX(), base.getSeekerSpawn().getY(), base.getSeekerSpawn().getZ(), base.getSeekerRotation(), 0);
@@ -39,7 +45,7 @@ public class MapInstance {
                 AbstractPositionData data = base.getData(t);
                 if (data == null) continue;
 
-                PlayerTeam team = scoreboard.addPlayerTeam(RandomStringUtils.random(16, true, false));
+                PlayerTeam team = new PlayerTeam(scoreboard, RandomStringUtils.random(16, true, false));
                 team.setColor(ChatFormatting.getById(data.getColor().toRGBI()));
 
                 if (!t.isSeeker()) {
@@ -47,6 +53,14 @@ public class MapInstance {
                 }
 
                 teams.put(t, team);
+
+                for(UUID u : session.getPlayerIds()) {
+
+                    ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                    if(pl == null) continue;
+
+                    pl.connection.send(new ClientboundSetPlayerTeamPacket(team, 0));
+                }
             }
         }
 
@@ -57,6 +71,10 @@ public class MapInstance {
         if(base.hasRain() || base.hasThunder()) {
             world.setWeatherParameters(0, Integer.MAX_VALUE, base.hasRain(), base.hasThunder());
         }
+    }
+
+    public ServerScoreboard getScoreboard() {
+        return scoreboard;
     }
 
     public AbstractMap getBaseMap() {
@@ -77,13 +95,34 @@ public class MapInstance {
 
     public void addToTeam(String name, PositionType type) {
         if(teams.containsKey(type)) {
-            scoreboard.addPlayerToTeam(name, teams.get(type));
+            PlayerTeam t = teams.get(type);
+            t.getPlayers().add(name);
+            for(UUID u : session.getPlayerIds()) {
+
+                ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                if(pl == null) continue;
+                pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name), 3));
+            }
         }
     }
 
     public void removeFromTeam(String name) {
         for(PlayerTeam t : teams.values()) {
-            if(t.getPlayers().contains(name)) scoreboard.removePlayerFromTeam(name, t);
+            if(t.getPlayers().contains(name)) {
+                t.getPlayers().remove(name);
+                for(UUID u : session.getPlayerIds()) {
+
+                    ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                    if(pl == null) continue;
+                    pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name),4));
+                }
+            }
+        }
+    }
+
+    public void removeTeams(ServerPlayer pl) {
+        for(PlayerTeam t : teams.values()) {
+            pl.connection.send(new ClientboundSetPlayerTeamPacket(t, 1));
         }
     }
 

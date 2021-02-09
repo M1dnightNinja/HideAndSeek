@@ -1,12 +1,10 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
 import me.m1dnightninja.hideandseek.api.AbstractLobby;
-import me.m1dnightninja.hideandseek.api.AbstractMap;
-import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
@@ -22,6 +20,20 @@ import net.minecraft.world.item.ItemStack;
 import java.util.UUID;
 
 public class Lobby extends AbstractLobby {
+
+    public static void registerPlaceholders(ILangModule<Component> mod) {
+
+        mod.registerStringPlaceholder("hideandseek_lobby_id", mod.createSupplier(AbstractLobby.class, AbstractLobby::getId));
+        mod.registerStringPlaceholder("hideandseek_lobby_color", mod.createSupplier(AbstractLobby.class, lby -> lby.getColor().toHex()));
+        mod.registerStringPlaceholder("hideandseek_lobby_color_legacy", mod.createSupplier(AbstractLobby.class, lby -> "§" + Integer.toHexString(lby.getColor().toRGBI())));
+        mod.registerStringPlaceholder("hideandseek_lobby_min_players", mod.createSupplier(AbstractLobby.class, lby -> lby.getMinPlayers() + ""));
+        mod.registerStringPlaceholder("hideandseek_lobby_max_players", mod.createSupplier(AbstractLobby.class, lby -> lby.getMaxPlayers() + ""));
+        mod.registerStringPlaceholder("hideandseek_lobby_game_mode", mod.createSupplier(AbstractLobby.class, lby -> lby.getGameType().getId()));
+
+        mod.registerRawPlaceholder("hideandseek_lobby_name", mod.createSupplier(AbstractLobby.class, lby -> TextUtil.parse(lby.getName())));
+        mod.registerRawPlaceholder("hideandseek_lobby_game_mode_name", mod.createSupplier(AbstractLobby.class, lby -> TextUtil.parse(lby.getGameType().getName())));
+
+    }
 
     private ItemStack displayStack;
 
@@ -42,69 +54,30 @@ public class Lobby extends AbstractLobby {
         return displayStack;
     }
 
-    public static Lobby parse(JsonObject obj) {
+    @Override
+    public void fromConfig(ConfigSection sec) {
+        super.fromConfig(sec);
 
-        String id = obj.get("id").getAsString();
-        Vec3d location = ParseUtil.parseLocation(obj.get("location").getAsString());
+        if(sec.has("item", ConfigSection.class)) {
+            displayStack = ParseUtil.parseItemStack(sec.get("item", ConfigSection.class));
+            if(displayStack != null) {
+                CompoundTag tag = displayStack.getOrCreateTag();
+
+                tag.put("display", createDisplayTag(this));
+                displayStack.setTag(tag);
+            }
+        }
+    }
+
+    public static Lobby parse(ConfigSection sec) {
+
+        String id = sec.getString("id");
+        Vec3d location = Vec3d.parse(sec.getString("location"));
 
         Lobby out = new Lobby(id, location);
-
-        if(obj.has("world")) {
-            out.world = obj.get("world").getAsString();
-        } else {
-            out.world = "minecraft:overworld";
-        }
-
-        if(obj.has("name")) {
-            out.name = obj.get("name").getAsString();
-        }
-
-        if(obj.has("description") && obj.get("description").isJsonArray()) {
-
-            for(JsonElement ele : obj.get("description").getAsJsonArray()) {
-                out.description.add(ele.getAsString());
-            }
-        }
-
-        if(obj.has("min_players")) {
-            out.minPlayers = obj.get("min_players").getAsInt();
-        }
-
-        if(obj.has("max_players")) {
-            out.maxPlayers = obj.get("max_players").getAsInt();
-        }
-
-        if(obj.has("color")) {
-            out.color = ParseUtil.parseColor(obj.get("color").getAsString());
-        }
-
-        if(obj.has("game_mode")) {
-            out.gameType = HideAndSeekAPI.getInstance().getRegistry().getGameType(obj.get("game_mode").getAsString());
-        }
-
-        if(obj.has("rotation")) {
-            out.rotation = obj.get("rotation").getAsFloat();
-        }
-
-        if(obj.has("maps") && obj.get("maps").isJsonArray()) {
-            for(JsonElement ele : obj.get("maps").getAsJsonArray()) {
-                AbstractMap map = HideAndSeekAPI.getInstance().getRegistry().getMap(ele.getAsString());
-                if(map != null) out.maps.add(map);
-            }
-        }
-
-        if(obj.has("item")) {
-            out.displayStack = ParseUtil.parseItemStack(obj.get("item").getAsJsonObject());
-            if(out.displayStack != null) {
-                CompoundTag tag = out.displayStack.getOrCreateTag();
-
-                tag.put("display", createDisplayTag(out));
-                out.displayStack.setTag(tag);
-            }
-        }
+        out.fromConfig(sec);
 
         return out;
-
     }
 
     public static ItemStack createDefaultItem(AbstractLobby lobby) {
@@ -127,7 +100,7 @@ public class Lobby extends AbstractLobby {
         display.put("Name", StringTag.valueOf(Component.Serializer.toJson(base.plainCopy().append(TextUtil.parse(lobby.getName())))));
 
         ListTag lore = new ListTag();
-        for(String s : lobby.getDescription()) {
+        for(String s : lobby.getDescription().split("\n")) {
             lore.add(StringTag.valueOf(Component.Serializer.toJson(base.plainCopy().append(TextUtil.parse(s)))));
         }
 

@@ -13,19 +13,20 @@ public abstract class AbstractLobbySession extends AbstractSession {
     private AbstractTimer startTimer;
 
     public AbstractLobbySession(AbstractLobby lobby) {
-        super(lobby.getId());
         this.lobby = lobby;
     }
 
     @Override
-    protected boolean onJoined(UUID u) {
+    protected boolean shouldAddPlayer(UUID u) {
+        return getPlayerCount() < lobby.getMaxPlayers() && !getPlayerIds().contains(u);
+    }
 
-        if(players.contains(u)) return false;
-        if(players.size() >= lobby.getMaxPlayers()) return false;
+    @Override
+    protected void onPlayerAdded(UUID u) {
 
         if(startTimer == null) {
-            if (players.size() + 1 == lobby.getMinPlayers()) {
-                startTimer = MidnightCoreAPI.getInstance().createTimer("{\"text\":\"Start \",\"color\":\"" + lobby.getColor().toHex() + "\"}", 180, false, new AbstractTimer.TimerCallback() {
+            if (getPlayerCount() + 1 == lobby.getMinPlayers()) {
+                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, new AbstractTimer.TimerCallback() {
                     @Override
                     public void tick(int secondsLeft) { }
 
@@ -36,7 +37,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
                     }
                 });
                 startTimer.addPlayer(u);
-                for (UUID o : players) {
+                for (UUID o : getPlayerIds()) {
                     startTimer.addPlayer(o);
                 }
                 startTimer.start();
@@ -44,8 +45,6 @@ public abstract class AbstractLobbySession extends AbstractSession {
         } else {
             startTimer.addPlayer(u);
         }
-
-        return true;
     }
 
     public void startGame(UUID seeker, AbstractMap map) {
@@ -70,8 +69,8 @@ public abstract class AbstractLobbySession extends AbstractSession {
     }
 
     @Override
-    protected void onLeft(UUID u) {
-        if(players.size() < lobby.getMinPlayers() && startTimer != null) {
+    protected void onPlayerRemoved(UUID u) {
+        if(getPlayerCount() < lobby.getMinPlayers() && startTimer != null) {
             startTimer.cancel();
         }
         if(isRunning()) {
@@ -79,7 +78,18 @@ public abstract class AbstractLobbySession extends AbstractSession {
         }
     }
 
+    @Override
+    protected void onTick() {
+        if(isRunning()) runningInstance.onTick();
+    }
+
+    public AbstractGameInstance getRunningGame() {
+        return runningInstance;
+    }
+
+    public abstract void broadcastMessage(String msg);
+
     public boolean isRunning() {
-        return runningInstance != null;
+        return runningInstance != null && !runningInstance.isShutdown();
     }
 }

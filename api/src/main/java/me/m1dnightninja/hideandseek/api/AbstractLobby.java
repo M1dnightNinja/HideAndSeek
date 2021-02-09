@@ -1,6 +1,7 @@
 package me.m1dnightninja.hideandseek.api;
 
 import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ public abstract class AbstractLobby {
     protected final Vec3d location;
 
     protected String name;
-    protected List<String> description = new ArrayList<>();
+    protected String description;
 
     protected int minPlayers = 2;
     protected int maxPlayers = 16;
@@ -48,8 +49,8 @@ public abstract class AbstractLobby {
         return name;
     }
 
-    public List<String> getDescription() {
-        return new ArrayList<>(description);
+    public String getDescription() {
+        return description;
     }
 
     public Color getColor() {
@@ -77,4 +78,52 @@ public abstract class AbstractLobby {
     }
 
     public abstract boolean canAccess(UUID u);
+
+    public void fromConfig(ConfigSection sec) {
+
+        if(sec.has("name", String.class)) {
+            name = sec.getString("name");
+        }
+
+        if(sec.has("description", String.class)) {
+            description = sec.getString("description");
+        }
+
+        if(sec.has("min_players", Number.class)) {
+            minPlayers = sec.getInt("min_players");
+        }
+
+        if(sec.has("max_players", Number.class)) {
+            maxPlayers = sec.getInt("max_players");
+        }
+
+        if(sec.has("color", String.class)) {
+            color = Color.parse(sec.getString("color"));
+        } else if(sec.has("color", Number.class)) {
+            color = new Color(sec.getInt("color"));
+        }
+
+        if(sec.has("game_mode", String.class)) {
+            gameType = HideAndSeekAPI.getInstance().getRegistry().getGameType(sec.getString("game_mode"));
+        }
+
+        if(sec.has("rotation", Number.class)) {
+            rotation = sec.getFloat("rotation");
+        }
+
+        if(sec.has("world", String.class)) {
+            world = sec.getString("world");
+        }
+
+        if(sec.has("maps", List.class)) {
+            for(Object o : sec.get("maps", List.class)) {
+                if(!(o instanceof String)) continue;
+                maps.add(HideAndSeekAPI.getInstance().getRegistry().getMap((String) o));
+            }
+        }
+
+
+
+    }
+
 }

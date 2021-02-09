@@ -22,16 +22,11 @@ public class EditingSession extends AbstractSession {
     boolean initialized = false;
 
     public EditingSession(AbstractMap map) {
-        super(map.getId());
         this.map = map;
-    }
-
-    @Override
-    public void initialize() {
 
         HideAndSeek.getInstance().getDimensionManager().loadMapWorld(map, map.getId() + "_editing", "world_editing",  world -> {
             if(world == null) return;
-            instance = new MapInstance(map, world, false);
+            instance = new MapInstance(this, map, world, false);
 
             for(ServerPlayer player : waiting) {
                 instance.getHiderSpawn().teleport(player);
@@ -39,27 +34,33 @@ public class EditingSession extends AbstractSession {
 
             initialized = true;
         });
-
     }
 
     @Override
-    protected boolean onJoined(UUID u) {
+    protected boolean shouldAddPlayer(UUID u) {
+
+        return instance != null || !initialized;
+    }
+
+    @Override
+    protected void onPlayerAdded(UUID u) {
 
         ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        if(player == null) return false;
+        if(player == null) {
+            removePlayer(u);
+            return;
+        }
 
         if(instance == null) {
-            if(initialized) return false;
             waiting.add(player);
         } else {
             instance.getHiderSpawn().teleport(player);
         }
         MidnightCoreAPI.getInstance().getModule(ISavePointModule.class).resetPlayer(u);
-        return true;
     }
 
     @Override
-    protected void onLeft(UUID u) { }
+    protected void onPlayerRemoved(UUID u) { }
 
     @Override
     protected void onShutdown() {
@@ -68,8 +69,9 @@ public class EditingSession extends AbstractSession {
     }
 
     @Override
-    public void onDamaged(UUID u, UUID damager, DamageSource damageSource, float amount) { }
+    protected void onTick() { }
 
     @Override
-    public void broadcastMessage(String message) { }
+    public void onDamaged(UUID u, UUID damager, DamageSource damageSource, float amount) { }
+
 }

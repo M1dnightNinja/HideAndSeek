@@ -1,13 +1,11 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
 import me.m1dnightninja.hideandseek.api.AbstractClass;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.api.PositionType;
 import me.m1dnightninja.hideandseek.api.SkinOption;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.ISkinModule;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import net.minecraft.core.Registry;
@@ -37,8 +35,6 @@ public class GameClass extends AbstractClass {
 
     @Override
     public void applyToPlayer(UUID uid, SkinOption option) {
-
-
 
         ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(uid);
         if(player == null) return;
@@ -72,68 +68,53 @@ public class GameClass extends AbstractClass {
 
     }
 
-    public static GameClass parse(JsonObject obj) {
+    @Override
+    public void fromConfig(ConfigSection sec) {
+        super.fromConfig(sec);
 
-        String id = obj.get("id").getAsString();
+        effects.clear();
+        equipment.clear();
+        items.clear();
 
-        GameClass out = new GameClass(id);
+        if(sec.has("effects", ConfigSection.class)) {
+            for(Map.Entry<String, Object> ele : sec.get("effects", ConfigSection.class).getEntries().entrySet()) {
 
-        if(obj.has("skins") && obj.get("skins").isJsonArray()) {
-            for(JsonElement ele : obj.getAsJsonArray("skins")) {
-                SkinOption opt = HideAndSeekAPI.getInstance().getRegistry().getSkin(ele.getAsString());
-                if(opt != null) out.skins.add(opt);
-            }
-        }
+                if(!(ele.getValue() instanceof Number)) return;
 
-        if(obj.has("effects") && obj.get("effects").isJsonObject()) {
-            JsonObject effects = obj.get("effects").getAsJsonObject();
-
-            for(Map.Entry<String, JsonElement> ele : effects.entrySet()) {
-
-                if(!ele.getValue().isJsonPrimitive()) continue;
-                if(!ele.getValue().getAsJsonPrimitive().isNumber()) continue;
-
-                int amplifier = ele.getValue().getAsInt();
+                int amplifier = ((Number) ele.getValue()).intValue();
                 MobEffect eff = Registry.MOB_EFFECT.get(new ResourceLocation(ele.getKey()));
 
-                out.effects.put(eff, amplifier);
+                effects.put(eff, amplifier);
             }
         }
 
-        if(obj.has("equipment") && obj.get("equipment").isJsonObject()) {
-            JsonObject equip = obj.get("equipment").getAsJsonObject();
+        if(sec.has("equipment", ConfigSection.class)) {
+            for(Map.Entry<String, Object> ele : sec.get("equipment", ConfigSection.class).getEntries().entrySet()) {
 
-            for(Map.Entry<String, JsonElement> ele : equip.entrySet()) {
                 EquipmentSlot slot = EquipmentSlot.byName(ele.getKey());
-                if(slot == null || !ele.getValue().isJsonObject()) continue;
+                if(slot == null || !(ele.getValue() instanceof ConfigSection)) continue;
 
-                ItemStack is = ParseUtil.parseItemStack(ele.getValue().getAsJsonObject());
-                if(is == null) continue;
-
-                out.equipment.put(slot, is);
+                ItemStack is = ParseUtil.parseItemStack((ConfigSection) ele.getValue());
+                if(is != null) equipment.put(slot, is);
             }
         }
 
-        if(obj.has("items") && obj.get("items").isJsonArray()) {
-            for(JsonElement ele : obj.getAsJsonArray("items")) {
-                if(!ele.isJsonObject()) continue;
-                out.items.add(ParseUtil.parseItemStack(ele.getAsJsonObject()));
+        if(sec.has("items", List.class)) {
+            for(Object o : sec.get("items", List.class)) {
+                if(!(o instanceof ConfigSection)) continue;
+
+                items.add(ParseUtil.parseItemStack((ConfigSection) o));
             }
         }
 
-        if(obj.has("equivalencies") && obj.get("equivalencies").isJsonObject()) {
-            JsonObject equip = obj.get("equivalencies").getAsJsonObject();
+    }
 
-            for(Map.Entry<String, JsonElement> ele : equip.entrySet()) {
+    public static GameClass parse(ConfigSection conf) {
 
-                for(PositionType type : PositionType.values()) {
+        String id = conf.get("id", String.class);
 
-                    if(ele.getKey().equals(type.getId())) {
-                        out.tempEquivalencies.put(type, ele.getValue().getAsString());
-                    }
-                }
-            }
-        }
+        GameClass out = new GameClass(id);
+        out.fromConfig(conf);
 
         return out;
     }

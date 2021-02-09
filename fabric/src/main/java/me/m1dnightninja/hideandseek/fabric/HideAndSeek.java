@@ -1,30 +1,38 @@
 package me.m1dnightninja.hideandseek.fabric;
 
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
+import com.google.gson.JsonObject;
 import me.m1dnightninja.hideandseek.fabric.command.LaunchEntityCommand;
 import me.m1dnightninja.hideandseek.fabric.command.MainCommand;
 import me.m1dnightninja.hideandseek.fabric.gamemode.ClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.manager.DimensionManager;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
-import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.midnightcore.api.ILogger;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
+import me.m1dnightninja.midnightcore.api.config.ConfigProvider;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.module.ILangModule;
+import me.m1dnightninja.midnightcore.common.JsonConfigProvider;
 import me.m1dnightninja.midnightcore.fabric.Logger;
-import me.m1dnightninja.midnightcore.fabric.api.JsonConfiguration;
-import me.m1dnightninja.midnightcore.fabric.api.event.EntityDamageEvent;
-import me.m1dnightninja.midnightcore.fabric.api.event.PlayerDisconnectEvent;
-import me.m1dnightninja.midnightcore.fabric.api.event.PlayerFoodLevelChangeEvent;
+import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
+import me.m1dnightninja.midnightcore.fabric.api.event.*;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
+import me.m1dnightninja.midnightcore.fabric.module.LangModule;
+import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 
-import java.io.File;
+import java.io.*;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 public class HideAndSeek implements ModInitializer {
@@ -35,6 +43,9 @@ public class HideAndSeek implements ModInitializer {
     private DimensionManager dimensionManager;
 
     private File configFolder;
+
+    private LangProvider langProvider;
+    private ConfigProvider configProvider;
 
     @Override
     public void onInitialize() {
@@ -48,12 +59,63 @@ public class HideAndSeek implements ModInitializer {
             return;
         }
 
-        dimensionManager = new DimensionManager();
+        this.configProvider = new JsonConfigProvider();
 
-        api = new HideAndSeekAPI(logger, new HideAndSeekRegistry());
+        File langFolder = new File(configFolder, "lang");
+        if(!langFolder.exists() || !langFolder.isDirectory()) {
 
-        loadGameModes();
-        loadConfig();
+            if(langFolder.exists() && !FileUtils.deleteQuietly(langFolder)) {
+                logger.warn("Unable to delete conflicting lang file!");
+                return;
+            }
+
+            if(!langFolder.mkdir()) {
+                logger.warn("Unable to create lang folder!");
+                return;
+            }
+
+            File out = new File(langFolder, "en_us.json");
+            try {
+
+                InputStream is = getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json");
+                FileOutputStream fos = new FileOutputStream(out);
+
+                byte[] buffer = new byte[1024];
+                int length;
+                while((length = is.read(buffer)) > 0) {
+                    fos.write(buffer, 0, length);
+                }
+
+                is.close();
+                fos.close();
+
+            } catch(IOException | NullPointerException ex) {
+                logger.warn("Unable to copy default lang file!");
+                ex.printStackTrace();
+                return;
+            }
+
+        }
+
+        JsonObject obj = new GsonBuilder().setPrettyPrinting().create().fromJson(new InputStreamReader(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json")), JsonObject.class);
+        HashMap<String, String> defaults = new HashMap<>();
+
+        for(java.util.Map.Entry<String, JsonElement> ent : obj.entrySet()) {
+            defaults.put(ent.getKey(), ent.getValue().getAsString());
+        }
+
+        Event.register(MidnightCoreInitEvent.class, this, initEvent -> {
+
+            loadLang(MidnightCoreAPI.getInstance().getModule(LangModule.class), langFolder, defaults);
+
+            dimensionManager = new DimensionManager();
+
+            api = new HideAndSeekAPI(logger, new HideAndSeekRegistry(), langProvider);
+
+            loadGameModes();
+            loadConfig();
+
+        });
 
         Event.register(PlayerDisconnectEvent.class, this, event -> {
             AbstractSession sess = api.getSessionManager().getSession(event.getPlayer().getUUID());
@@ -77,6 +139,9 @@ public class HideAndSeek implements ModInitializer {
             }
         });
 
+        Event.register(ServerTickEvent.class, this, event -> api.getSessionManager().tick());
+
+
         CommandRegistrationCallback.EVENT.register((commandDispatcher, b) -> {
             new MainCommand().register(commandDispatcher);
             new LaunchEntityCommand().register(commandDispatcher);
@@ -86,19 +151,26 @@ public class HideAndSeek implements ModInitializer {
 
     }
 
-    public HideAndSeekAPI getAPI() {
-        return api;
-    }
-
     public DimensionManager getDimensionManager() {
         return dimensionManager;
     }
 
+    public LangProvider getLangProvider() {
+        return langProvider;
+    }
+
     private void loadGameModes() {
-        api.getRegistry().registerGameType("classic", ClassicGameMode::new);
+        api.getRegistry().registerGameType(new GameType("classic", langProvider.getMessage("gamemode.classic")) {
+            @Override
+            public AbstractGameInstance create(AbstractLobbySession lobby, UUID player, AbstractMap map) {
+                return new ClassicGameMode(lobby, player, map);
+            }
+        });
     }
 
     private void loadConfig() {
+
+        File mainConfig = new File(configFolder, "config.json");
 
         File skinConfig = new File(configFolder, "skins.json");
         File classesConfig = new File(configFolder, "classes.json");
@@ -106,45 +178,40 @@ public class HideAndSeek implements ModInitializer {
 
         File mapsFolder = new File(configFolder, "maps");
 
+        if(mainConfig.exists() && !mainConfig.isDirectory()) {
+
+            ConfigSection sec = configProvider.loadFromFile(mainConfig);
+            api.getMainSettings().fromConfig(sec);
+
+        } else {
+            if(mainConfig.exists() && !FileUtils.deleteQuietly(mainConfig)) {
+                HideAndSeekAPI.getLogger().warn("Unable to delete conflicting main config file!");
+            } else {
+
+                configProvider.saveToFile(api.getMainSettings().toConfig(), mainConfig);
+            }
+        }
+
         if(skinConfig.exists() && !skinConfig.isDirectory()) {
-            try {
-                JsonConfiguration conf = JsonConfiguration.loadFromFile(skinConfig);
 
-                if(conf.getRoot().has("skins") && conf.getRoot().get("skins").isJsonArray()) {
-                    for(JsonElement ele : conf.getRoot().getAsJsonArray("skins")) {
-                        try {
-                            if(!ele.isJsonObject()) continue;
-                            api.getRegistry().registerSkin(ParseUtil.parseSkinOption(ele.getAsJsonObject()));
-                        } catch(IllegalStateException | NullPointerException ex) {
-                            HideAndSeekAPI.getLogger().warn("An exception occurred while trying to parse a skin!");
-                            ex.printStackTrace();
-                        }
-                    }
+            ConfigSection sec = configProvider.loadFromFile(skinConfig);
+            if(sec.has("skins", List.class)) {
+                for(Object o : sec.get("skins", List.class)) {
+                    if(!(o instanceof ConfigSection)) continue;
+                    api.getRegistry().registerSkin(SkinOption.parse((ConfigSection) o));
                 }
-
-            } catch(JsonParseException ex) {
-                HideAndSeekAPI.getLogger().warn("Unable to read skin configuration!");
             }
         }
 
         if(classesConfig.exists() && !classesConfig.isDirectory()) {
-            try {
-                JsonConfiguration conf = JsonConfiguration.loadFromFile(classesConfig);
 
-                if(conf.getRoot().has("classes") && conf.getRoot().get("classes").isJsonArray()) {
-                    for(JsonElement ele : conf.getRoot().getAsJsonArray("classes")) {
-                        try {
-                            if(!ele.isJsonObject()) continue;
-                            api.getRegistry().registerClass(GameClass.parse(ele.getAsJsonObject()));
-                        } catch(IllegalStateException | NullPointerException ex) {
-                            HideAndSeekAPI.getLogger().warn("An exception occurred while trying to parse a class!");
-                            ex.printStackTrace();
-                        }
-                    }
+            ConfigSection sec = configProvider.loadFromFile(classesConfig);
+            if(sec.has("classes", List.class)) {
+                for(Object o : sec.get("classes", List.class)) {
+                    if(!(o instanceof ConfigSection)) continue;
+
+                    api.getRegistry().registerClass(GameClass.parse((ConfigSection) o));
                 }
-
-            } catch(JsonParseException ex) {
-                HideAndSeekAPI.getLogger().warn("Unable to read class configuration!");
             }
         }
 
@@ -159,50 +226,27 @@ public class HideAndSeek implements ModInitializer {
                 if(!config.exists() || config.isDirectory()) continue;
                 if(!world.exists() || !world.isDirectory()) continue;
 
-                JsonConfiguration conf;
-                try {
-                    conf = JsonConfiguration.loadFromFile(config);
-                } catch(JsonParseException ex) {
-                    HideAndSeekAPI.getLogger().warn("An exception occurred while trying to parse map " + f.getName());
-                    ex.printStackTrace();
-                    continue;
-                }
-
-                if(conf.getRoot() == null) {
-                    continue;
-                }
-
-                api.getRegistry().registerMap(Map.parse(f.getName(), conf.getRoot(), f));
+                ConfigSection sec = configProvider.loadFromFile(config);
+                api.getRegistry().registerMap(Map.parse(sec, f.getName(), f));
 
             }
         }
 
         if(lobbyConfig.exists() && !lobbyConfig.isDirectory()) {
 
-            try {
-                JsonConfiguration conf = JsonConfiguration.loadFromFile(lobbyConfig);
+            ConfigSection sec = configProvider.loadFromFile(lobbyConfig);
+            if(sec.has("lobbies", List.class)) {
+                for(Object o : sec.get("lobbies", List.class)) {
+                    if(!(o instanceof ConfigSection)) continue;
 
-                if(conf.getRoot().has("lobbies") && conf.getRoot().get("lobbies").isJsonArray()) {
-                    for(JsonElement ele : conf.getRoot().getAsJsonArray("lobbies")) {
-                        try {
-                            if(!ele.isJsonObject()) continue;
-
-                            Lobby l = Lobby.parse(ele.getAsJsonObject());
-                            if(l.getId().startsWith("world_") || l.getId().equals("world") || !l.getId().matches("[a-z0-9_.-]+")) {
-                                HideAndSeekAPI.getLogger().warn("Unable to register lobby " + l.getId() + "! Invalid ID!");
-                                continue;
-                            }
-
-                            api.getRegistry().registerLobby(l);
-                        } catch(IllegalStateException | NullPointerException ex) {
-                            HideAndSeekAPI.getLogger().warn("An exception occurred while trying to parse a lobby!");
-                            ex.printStackTrace();
-                        }
+                    Lobby l = Lobby.parse((ConfigSection) o);
+                    if(l.getId().startsWith("world_") || l.getId().equals("world") || !l.getId().matches("[a-z0-9_.-]+")) {
+                        HideAndSeekAPI.getLogger().warn("Unable to register lobby " + l.getId() + "! Invalid ID!");
+                        continue;
                     }
-                }
 
-            } catch(JsonParseException ex) {
-                HideAndSeekAPI.getLogger().warn("Unable to read lobby configuration!");
+                    api.getRegistry().registerLobby(l);
+                }
             }
         }
 
@@ -226,9 +270,27 @@ public class HideAndSeek implements ModInitializer {
         api.getSessionManager().shutdownAll();
         api.getRegistry().clear();
 
+        api.resetMainSettings();
+
         loadGameModes();
         loadConfig();
     }
+
+
+    private void loadLang(ILangModule<Component> module, File langFolder, HashMap<String, String> defaults) {
+
+        Map.registerPlaceholders(module);
+        Lobby.registerPlaceholders(module);
+        LobbySession.registerPlaceholders(module);
+        PositionData.registerPlaceholders(module);
+
+        module.registerStringPlaceholder("hideandseek_region_id", module.createSupplier(Region.class, Region::getId));
+        module.registerRawPlaceholder("hideandseek_region_name", module.createSupplier(Region.class, reg -> TextUtil.parse(reg.getDisplay())));
+
+        langProvider = (LangProvider) module.createProvider("hideandseek", langFolder, defaults);
+    }
+
+
 
     public static HideAndSeek getInstance() {
         return instance;

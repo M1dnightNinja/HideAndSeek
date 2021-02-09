@@ -4,6 +4,7 @@
   "package": "me.m1dnightninja.hideandseek.fabric.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "AccessorMoveEntityPacket",
     "AccessorFireworkRocketEntity",
     "AccessorPlayerSpawnPacket",
     "AccessorTextColor"

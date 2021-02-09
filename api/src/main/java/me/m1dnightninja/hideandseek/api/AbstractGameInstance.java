@@ -1,17 +1,15 @@
 package me.m1dnightninja.hideandseek.api;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-public abstract class AbstractGameInstance {
+public abstract class AbstractGameInstance extends AbstractSession {
 
     protected HashMap<UUID, PositionType> positions = new HashMap<>();
     protected HashMap<UUID, AbstractClass> classes = new HashMap<>();
     protected final AbstractLobbySession lobby;
 
-    private final List<AbstractSession.SessionListener> listeners = new ArrayList<>();
 
     public AbstractGameInstance(AbstractLobbySession lobby) {
         this.lobby = lobby;
@@ -21,25 +19,27 @@ public abstract class AbstractGameInstance {
         return positions.get(u);
     }
 
-    private boolean stopped = false;
-
-    public final void removePlayer(UUID u) {
-        positions.remove(u);
-        onPlayerRemoved(u);
+    @Override
+    protected final boolean shouldAddPlayer(UUID u) {
+        return false;
     }
 
-    public final void shutdown() {
+    @Override
+    protected final void onPlayerAdded(UUID u) {
+        removePlayer(u);
+    }
 
-        if(stopped) return;
-        stopped = true;
+    public List<UUID> getPlayerIds() {
+        return lobby.getPlayerIds();
+    }
 
-        for(UUID u : new ArrayList<>(positions.keySet())) {
-            removePlayer(u);
-        }
-        onShutdown();
-        for(AbstractSession.SessionListener lst : listeners) {
-            lst.onShutdown();
-        }
+    public int getPlayerCount() {
+        return lobby.getPlayerCount();
+    }
+
+    @Override
+    protected void onShutdown() {
+        lobby.shutdown();
     }
 
     protected void setPosition(UUID u, PositionType type) {
@@ -48,12 +48,27 @@ public abstract class AbstractGameInstance {
 
     public abstract void start();
 
-    protected abstract void onPlayerRemoved(UUID u);
-    public abstract void onDamaged(UUID u, UUID damager, DamageSource source, float amount);
-    protected abstract void onShutdown();
+    protected abstract void endGame(PositionType winner);
 
-    public void addListener(AbstractSession.SessionListener listener) {
-        listeners.add(listener);
+    public abstract AbstractMap getMap();
+
+    @Override
+    protected void onPlayerRemoved(UUID u) {
+
+        positions.remove(u);
+        checkVictory();
+
+        lobby.removePlayer(u);
     }
+
+    public int countPosition(PositionType t) {
+        int out = 0;
+        for(PositionType t1 : positions.values()) {
+            if(t == t1) out++;
+        }
+        return out;
+    }
+
+    protected abstract void checkVictory();
 
 }

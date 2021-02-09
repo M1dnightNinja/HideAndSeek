@@ -1,73 +1,79 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
-import me.m1dnightninja.hideandseek.api.AbstractClass;
-import me.m1dnightninja.hideandseek.api.AbstractPositionData;
-import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.api.PositionType;
+import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Component;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
+import net.minecraft.server.level.ServerPlayer;
 
 public class PositionData extends AbstractPositionData {
+
+    public static void registerPlaceholders(ILangModule<Component> mod) {
+
+        mod.registerStringPlaceholder("hideandseek_position_type", mod.createSupplier(AbstractPositionData.class, obj -> obj.getType().getId()));
+        mod.registerStringPlaceholder("hideandseek_position_color", mod.createSupplier(AbstractPositionData.class, obj -> obj.getColor().toHex()));
+
+        mod.registerRawPlaceholder("hideandseek_position_name", mod.createSupplier(PositionData.class, PositionData::getRawName));
+        mod.registerRawPlaceholder("hideandseek_position_name_plural", mod.createSupplier(PositionData.class, PositionData::getRawPluralName));
+        mod.registerRawPlaceholder("hideandseek_position_name_proper", mod.createSupplier(PositionData.class, PositionData::getRawProperName));
+
+        mod.registerStringPlaceholder("hideandseek_player_position_type", mod.createSupplier(ServerPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getType().getId();
+        }));
+
+        mod.registerStringPlaceholder("hideandseek_player_position_color", mod.createSupplier(ServerPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getColor().toHex();
+        }));
+
+        mod.registerRawPlaceholder("hideandseek_player_position_name", mod.createSupplier(ServerPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
+            return ((PositionData) sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID()))).getRawName();
+        }));
+
+        mod.registerRawPlaceholder("hideandseek_player_position_name_proper", mod.createSupplier(ServerPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
+            return ((PositionData) sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID()))).getRawProperName();
+        }));
+
+        mod.registerRawPlaceholder("hideandseek_player_position_name_plural", mod.createSupplier(ServerPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
+            return ((PositionData) sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID()))).getRawPluralName();
+        }));
+
+    }
+
+    private MutableComponent rawName;
+    private MutableComponent rawPluralName;
+    private MutableComponent rawProperName;
 
     public PositionData(PositionType type) {
         super(type);
     }
 
-    public static PositionData parse(JsonObject obj, PositionType type, Map map) {
+    public MutableComponent getRawName() {
+        return rawName;
+    }
+
+    public MutableComponent getRawPluralName() {
+        return rawPluralName;
+    }
+
+    public MutableComponent getRawProperName() {
+        return rawProperName;
+    }
+
+    public static PositionData parse(ConfigSection obj, PositionType type, Map map) {
 
         PositionData out = new PositionData(type);
+        out.fromConfig(obj, map);
 
-        if(obj.has("name")) {
-            out.name = obj.get("name").getAsString();
-        }
-
-        MutableComponent name = TextUtil.parse(out.name);
-
-        if(obj.has("name_plural")) {
-            out.pluralName = obj.get("name_plural").getAsString();
-        } else {
-            out.pluralName = Component.Serializer.toJson(new TextComponent(name.getString() + "s").setStyle(name.getStyle()));
-        }
-
-        if(obj.has("name_proper")) {
-            out.properName = obj.get("name_proper").getAsString();
-        }  else {
-            out.properName = Component.Serializer.toJson(new TextComponent("The " + name.getString()).setStyle(name.getStyle()));
-        }
-
-        if(obj.has("color")) {
-            out.color = ParseUtil.parseColor(obj.get("color").getAsString());
-        }
-
-        if(obj.has("classes") && obj.get("classes").isJsonArray()) {
-
-            HashMap<String, AbstractClass> classes = new HashMap<>();
-
-            for(AbstractClass clazz : HideAndSeekAPI.getInstance().getRegistry().getClasses()) {
-                classes.put(clazz.getId(), clazz);
-            }
-            if(map != null) {
-                for (AbstractClass clazz : map.getMapClasses()) {
-                    classes.put(clazz.getId(), clazz);
-                }
-            }
-
-            for(JsonElement ele : obj.get("classes").getAsJsonArray()) {
-
-                out.classes.add(classes.get(ele.getAsString()));
-
-            }
-        }
+        out.rawName = TextUtil.parse(out.getName());
+        out.rawPluralName = TextUtil.parse(out.getPluralName());
+        out.rawProperName = TextUtil.parse(out.getProperName());
 
         return out;
     }

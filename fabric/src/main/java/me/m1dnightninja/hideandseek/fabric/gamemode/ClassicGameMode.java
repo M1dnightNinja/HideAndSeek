@@ -1,114 +1,171 @@
 package me.m1dnightninja.hideandseek.fabric.gamemode;
 
+import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.AbstractMap;
+import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.hideandseek.fabric.MapInstance;
+import me.m1dnightninja.hideandseek.fabric.PositionData;
+import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
 import me.m1dnightninja.hideandseek.fabric.util.FireworkUtil;
-import me.m1dnightninja.hideandseek.api.*;
-import me.m1dnightninja.hideandseek.api.AbstractMap;
 import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.fabric.api.CustomScoreboard;
+import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import me.m1dnightninja.midnightcore.fabric.api.Timer;
 import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
-import me.m1dnightninja.midnightcore.fabric.api.event.ServerTickEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.network.chat.*;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundAddPlayerPacket;
-import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitlesPacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.FireworkRocketItem;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.*;
-import java.util.List;
 
-public class ClassicGameMode extends AbstractGameInstance {
-
-    private final ServerPlayer seeker;
-    private final AbstractMap map;
+public class ClassicGameMode extends AbstractClassicGameMode {
 
     private MapInstance currentMap;
-    private ClassicGameState state = ClassicGameState.UNINITIALIZED;
 
-    private final HashMap<ServerPlayer, Vec3d> locations = new HashMap<>();
-    private final List<ServerPlayer> toTeleport = new ArrayList<>();
+    private final HashMap<UUID, CustomScoreboard> scoreboards = new HashMap<>();
 
-    private final List<AbstractTimer> runningTimers = new ArrayList<>();
+    private final HashMap<UUID, List<UUID>> hidden = new HashMap<>();
 
-    private AbstractTimer hiderTimer;
-    private AbstractTimer seekerTimer;
+    private final boolean useAntiCheat;
 
-    public ClassicGameMode(AbstractLobbySession lobby, UUID seeker, AbstractMap startMap) {
-        super(lobby);
+    public ClassicGameMode(AbstractLobbySession lobby, UUID seeker, AbstractMap map) {
+        super(lobby, seeker, map);
 
-        if(seeker == null) seeker = lobby.getPlayers().get(HideAndSeekAPI.getInstance().getRandom().nextInt(lobby.getPlayers().size()));
-        if(startMap == null) startMap = lobby.getLobby().getMaps().get(HideAndSeekAPI.getInstance().getRandom().nextInt(lobby.getLobby().getMaps().size()));
-
-        this.seeker = MidnightCore.getServer().getPlayerList().getPlayer(seeker);
-        this.map = startMap;
-
-        Event.register(ServerTickEvent.class, this, event -> {
-
-            if(state == ClassicGameState.UNINITIALIZED) return;
-
-            for(Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
-
-                ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
-                if(player == null) continue;
-
-                Vec3d newLoc = new Vec3d(player.getX(), player.getY(), player.getZ());
-                locations.computeIfAbsent(player, k -> newLoc);
-
-                if(state == ClassicGameState.HIDING && positions.get(ent.getKey()).isSeeker()) {
-
-                    if(!newLoc.equals(locations.get(player))) toTeleport.add(player);
-                }
-
-                for(Region reg : map.getRegions()) {
-                    if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
-
-                        player.sendMessage(new TextComponent("").setStyle(Style.EMPTY.withColor(ChatFormatting.RED))
-                                .append(TextUtil.parse(map.getData(positions.get(ent.getKey())).getPluralName()))
-                                .append(new TextComponent(" cannot enter "))
-                                .append(TextUtil.parse(reg.getDisplay()))
-                                .append("!"), ChatType.SYSTEM, Util.NIL_UUID);
-                        toTeleport.add(player);
-                    }
-                }
-
-                if(toTeleport.contains(player)) {
-                    player.teleportTo(locations.get(player).getX(), locations.get(player).getY(), locations.get(player).getZ());
-                    toTeleport.remove(player);
-                } else {
-                    locations.put(player, newLoc);
-                }
-            }
-        });
+        useAntiCheat = HideAndSeekAPI.getInstance().getMainSettings().isAntiCheatEnabled();
 
         Event.register(PacketSendEvent.class, this, event -> {
-            if(state == ClassicGameState.HIDING && event.getPacket() instanceof ClientboundAddPlayerPacket && positions.containsKey(event.getPlayer().getUUID()) && positions.get(event.getPlayer().getUUID()).isSeeker()) {
+            if(state == ClassicGameState.UNINITIALIZED || (!useAntiCheat && state != ClassicGameState.HIDING)) return;
+            if(event.getPacket() instanceof ClientboundAddPlayerPacket) {
 
                 UUID id = ((AccessorPlayerSpawnPacket) event.getPacket()).getPlayerId();
-                if(positions.containsKey(id) && !positions.get(id).isSeeker()) {
+                if(hidden.get(event.getPlayer().getUUID()).contains(id)) {
                     event.setCancelled(true);
                 }
+            }
+            if(event.getPacket() instanceof ClientboundMoveEntityPacket) {
+
+                int id = ((AccessorMoveEntityPacket) event.getPacket()).getEntityId();
+                Entity ent = currentMap.getWorld().getEntity(id);
+
+                if(ent instanceof ServerPlayer && hidden.get(event.getPlayer().getUUID()).contains(ent.getUUID())) {
+                    event.setCancelled(true);
+                }
+
             }
         });
     }
 
     @Override
-    public void start() {
+    protected void startSeeking() {
+        super.startSeeking();
+
+        if(!useAntiCheat) {
+
+            for(UUID u : hidden.keySet()) {
+
+                ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                if(player == null) continue;
+
+                for(UUID uu : hidden.get(u)) {
+
+                    ServerPlayer other = MidnightCore.getServer().getPlayerList().getPlayer(uu);
+                    if(other == null) continue;
+
+                    player.connection.send(new ClientboundAddPlayerPacket(other));
+                    player.connection.send(new ClientboundSetEntityDataPacket(other.getId(), other.getEntityData(), true));
+                }
+            }
+
+            hidden.clear();
+        }
+
+        Event.unregisterAll(this);
+
+        for(CustomScoreboard sb : scoreboards.values()) {
+
+            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Seeking").setStyle(Style.EMPTY.withColor(ChatFormatting.RED))));
+            sb.update();
+
+        }
+
+    }
+
+    @Override
+    protected void onTick() {
+        if(state == ClassicGameState.UNINITIALIZED) return;
+
+        for(Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
+
+            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
+            if(player == null) continue;
+
+            Vec3d newLoc = new Vec3d(player.getX(), player.getY(), player.getZ());
+            locations.putIfAbsent(ent.getKey(), newLoc);
+
+            if(state == ClassicGameState.HIDING && positions.get(ent.getKey()).isSeeker()) {
+
+                if(!newLoc.equals(locations.get(ent.getKey()))) toTeleport.add(ent.getKey());
+            }
+
+            for(Region reg : map.getRegions()) {
+                if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
+
+                    player.sendMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent("deny_region_entry", player, reg),  ChatType.SYSTEM, Util.NIL_UUID);
+
+                    toTeleport.add(ent.getKey());
+                }
+            }
+
+            if(toTeleport.contains(ent.getKey())) {
+                player.teleportTo(locations.get(ent.getKey()).getX(), locations.get(ent.getKey()).getY(), locations.get(ent.getKey()).getZ());
+                toTeleport.remove(ent.getKey());
+            } else {
+                locations.put(ent.getKey(), newLoc);
+            }
+
+            if(useAntiCheat && state != ClassicGameState.HIDING && positions.get(ent.getKey()).isSeeker()) {
+                for(Map.Entry<UUID, PositionType> ent1 : positions.entrySet()) {
+                    if(ent1.getValue().isSeeker()) continue;
+
+                    ServerPlayer other = MidnightCore.getServer().getPlayerList().getPlayer(ent1.getKey());
+                    if(other == null) continue;
+
+                    if(hidden.get(ent.getKey()).contains(ent1.getKey()) && player.canSee(other)) {
+                        hidden.get(ent.getKey()).remove(ent1.getKey());
+                        player.connection.send(new ClientboundAddPlayerPacket(other));
+                        player.connection.send(new ClientboundSetEntityDataPacket(other.getId(), other.getEntityData(), true));
+                    }
+
+                    if(!hidden.get(ent.getKey()).contains(ent1.getKey()) && !player.canSee(other)) {
+                        hidden.get(ent.getKey()).add(ent1.getKey());
+                        player.connection.send(new ClientboundRemoveEntitiesPacket(other.getId()));
+                    }
+
+                }
+            }
+
+        }
+
+    }
+
+    @Override
+    protected void loadWorld(AbstractMap map, Runnable callback) {
 
         HideAndSeek.getInstance().getDimensionManager().loadMapWorld(map, lobby.getLobby().getId(), lobby.getLobby().getId(), (world) -> {
             if(world == null) {
@@ -117,320 +174,89 @@ public class ClassicGameMode extends AbstractGameInstance {
             }
 
             try {
-                currentMap = new MapInstance(map, world, true);
+
+                currentMap = new MapInstance(this, map, world, true);
             } catch (Throwable th) {
                 th.printStackTrace();
                 shutdown();
             }
-            startHiding();
+
+            callback.run();
         });
 
     }
 
-    private void startHiding() {
-
-        state = ClassicGameState.HIDING;
-
-        Timer timer = new Timer(TextUtil.parse(map.getData(PositionType.MAIN_SEEKER).getName()).append(" released in "), map.getHideTime(), false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int secondsLeft) {
-                if(secondsLeft == 0) {
-                    for (UUID u : lobby.getPlayers()) {
-
-                        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-                        if(pl == null) continue;
-
-                        pl.playNotifySound(SoundEvents.ENDER_DRAGON_GROWL, SoundSource.HOSTILE, 1.0f, 1.0f);
-                    }
-                } else if(secondsLeft <= 5) {
-                    for (UUID u : lobby.getPlayers()) {
-
-                        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-                        if(pl == null) continue;
-
-                        pl.playNotifySound(SoundEvents.ENDER_DRAGON_GROWL, SoundSource.HOSTILE, 1.0f, 1.0f);
-                    }
-                }
-            }
-
-            @Override
-            public void finish() {
-                startSeeking();
-            }
-        });
-
-        runningTimers.add(timer);
-
-        try {
-            for (UUID u : lobby.getPlayers()) {
-
-                ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-                if (player == null) continue;
-
-                Component subtitle;
-                if (u.equals(seeker.getUUID())) {
-                    setPosition(u, PositionType.MAIN_SEEKER);
-
-                    subtitle = new TextComponent("Find the ").append(TextUtil.parse(map.getData(PositionType.HIDER).getPluralName()));
-
-                    currentMap.getSeekerSpawn().teleport(player);
-                } else {
-                    setPosition(u, PositionType.HIDER);
-
-                    subtitle = new TextComponent("Hide from ").append(TextUtil.parse(map.getData(PositionType.MAIN_SEEKER).getProperName()));
-
-                    currentMap.getHiderSpawn().teleport(player);
-                }
-
-                Component title = TextUtil.parse(map.getData(positions.get(u)).getName());
-
-                AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(u, map, positions.get(u));
-
-                if (clazz != null) {
-                    clazz.applyToPlayer(u, null);
-                    classes.put(u, clazz);
-                }
-
-                ClientboundSetTitlesPacket tp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20);
-                ClientboundSetTitlesPacket sp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.SUBTITLE, subtitle, 12, 80, 20);
-
-                player.connection.send(tp);
-                player.connection.send(sp);
-
-                currentMap.addToTeam(player.getGameProfile().getName(), positions.get(u));
-
-                timer.addPlayer(player.getUUID());
-
-            }
-        } catch(Throwable th) {
-            th.printStackTrace();
+    @Override
+    protected void unloadWorld() {
+        currentMap.clearTeams();
+        for(CustomScoreboard cs : scoreboards.values()) {
+            cs.clearPlayers();
         }
-
-        setHidersVisible(false);
-
-        timer.start();
-
+        HideAndSeek.getInstance().getDimensionManager().unloadMapWorld(map, lobby.getLobby().getId(), false);
     }
 
-    private void startSeeking() {
-
-        state = ClassicGameState.SEEKING;
-
-        setHidersVisible(true);
-        cancelTimers();
-
-        hiderTimer = new Timer(TextUtil.parse(map.getData(PositionType.HIDER).getName()).append(" "), map.getSeekTime(), false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int secondsLeft) { }
-
-            @Override
-            public void finish() {
-                endGame(PositionType.HIDER);
-            }
-        });
-        seekerTimer = new Timer(TextUtil.parse(map.getData(PositionType.SEEKER).getName()).append(" "), map.getSeekTime(), false, null);
-        Timer mainSeekerTimer = new Timer(TextUtil.parse(map.getData(PositionType.MAIN_SEEKER).getName()).append(" "), map.getSeekTime(), false, null);
-
-        runningTimers.add(hiderTimer);
-        runningTimers.add(seekerTimer);
-        runningTimers.add(mainSeekerTimer);
-
-        for(HashMap.Entry<UUID, PositionType> ent : positions.entrySet()) {
-
-            switch(ent.getValue()) {
-                case HIDER:
-                    hiderTimer.addPlayer(ent.getKey());
-                    break;
-                case SEEKER:
-                    seekerTimer.addPlayer(ent.getKey());
-                    break;
-                case MAIN_SEEKER:
-                    mainSeekerTimer.addPlayer(ent.getKey());
-            }
-
+    @Override
+    protected void playTickSound() {
+        for(UUID u : getPlayerIds()) {
+            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(pl != null) pl.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.HOSTILE, 1.0f, 1.0f);
         }
-
-        seekerTimer.start();
-        hiderTimer.start();
-        mainSeekerTimer.start();
-
     }
 
-    private void endGame(PositionType winner) {
+    @Override
+    protected void playReleaseSound() {
+        for(UUID u : getPlayerIds()) {
+            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(pl != null) pl.playNotifySound(SoundEvents.ENDER_DRAGON_GROWL, SoundSource.HOSTILE, 1.0f, 1.0f);
+        }
+    }
 
-        state = ClassicGameState.ENDING;
+    @Override
+    protected void broadcastTagMessage(UUID tagged, UUID tagger, DamageSource src) {
 
-        cancelTimers();
+        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(tagged);
+        if(pl == null) return;
 
-        Component title;
-        if(winner == null) {
-            title = new TextComponent("Draw");
+        MutableComponent bc;
+
+        if(tagger != null) {
+
+            ServerPlayer attacker = MidnightCore.getServer().getPlayerList().getPlayer(tagger);
+            if(attacker == null) return;
+
+            bc = new TextComponent("")
+                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
+                    .append(" was tagged by ")
+                    .append(attacker.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.SEEKER).getColor().toHex()))))
+                    .append("! ")
+                    .append(getRemainsText());
+
+        } else if(src != null) {
+
+            net.minecraft.world.damagesource.DamageSource minecraft = ConversionUtil.convertDamageSource(src);
+
+            bc = new TextComponent("")
+                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
+                    .append(new TranslatableComponent("death.attack." + minecraft.msgId))
+                    .append("! ")
+                    .append(getRemainsText());
+
         } else {
-            title = new TextComponent("The ").setStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(winner).getColor().toHex()))).append(TextUtil.parse(map.getData(winner).getPluralName()).append(" win!"));
+
+            bc = new TextComponent("")
+                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
+                    .append(" was tagged! ")
+                    .append(getRemainsText());
+
         }
 
-        Timer timer = new Timer(new TextComponent("FINISH ").setStyle(Style.EMPTY.withColor(TextColor.parseColor(lobby.getLobby().getColor().toHex()))), 15, false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int secondsLeft) { }
+        for(UUID u : getPlayerIds()) {
 
-            @Override
-            public void finish() {
-                shutdown();
-            }
-        });
-        runningTimers.add(timer);
-        ClientboundSetTitlesPacket packet = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20);
+            ServerPlayer op = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(op != null) op.sendMessage(bc, ChatType.SYSTEM, Util.NIL_UUID);
 
-        for(UUID u : lobby.getPlayers()) {
-
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(player == null) continue;
-
-            player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.HOSTILE, 1.0f, 1.3f);
-            player.connection.send(packet);
-
-            timer.addPlayer(u);
         }
 
-        timer.start();
-
-    }
-
-    @Override
-    protected void onPlayerRemoved(UUID u) {
-
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        if(currentMap != null && player != null) {
-            currentMap.removeFromTeam(player.getGameProfile().getName());
-        }
-
-        for(AbstractTimer timer : runningTimers) {
-            timer.removePlayer(u);
-        }
-
-        checkVictory();
-    }
-
-    @Override
-    public void onDamaged(UUID u, UUID damager, DamageSource source, float amount) {
-
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        if(player == null) return;
-
-        if(state == ClassicGameState.SEEKING && positions.containsKey(u) && !positions.get(u).isSeeker()) {
-
-            if (damager != null) {
-
-                ServerPlayer attacker = MidnightCore.getServer().getPlayerList().getPlayer(damager);
-                if (attacker == null || !positions.containsKey(damager) || !positions.get(damager).isSeeker()) return;
-
-                setPlayerSeeker(player);
-                broadcastMessage(new TextComponent("")
-                        .append(player.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
-                        .append(" was tagged by ")
-                        .append(attacker.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.SEEKER).getColor().toHex()))))
-                        .append("! ")
-                        .append(getRemainsText()));
-
-            } else if (map.getTagSources().contains(source)) {
-
-                net.minecraft.world.damagesource.DamageSource minecraft = ConversionUtil.convertDamageSource(source);
-
-                setPlayerSeeker(player);
-                broadcastMessage(new TextComponent("")
-                        .append(player.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
-                        .append(new TranslatableComponent("death.attack." + minecraft.msgId))
-                        .append("! ")
-                        .append(getRemainsText()));
-
-            }
-        }
-
-        if(map.getResetSources().contains(source)) {
-            if(positions.get(u).isSeeker()) {
-                locations.put(player, map.getSeekerSpawn());
-            } else {
-                locations.put(player, map.getHiderSpawn());
-            }
-            toTeleport.add(player);
-        }
-
-    }
-
-    @Override
-    protected void onShutdown() {
-        cancelTimers();
-        Event.unregisterAll(this);
-        if(currentMap != null) {
-            currentMap.clearTeams();
-            HideAndSeek.getInstance().getDimensionManager().unloadMapWorld(map, lobby.getLobby().getId(), false);
-        }
-    }
-
-    private void cancelTimers() {
-        for(AbstractTimer timer : runningTimers) {
-            timer.cancel();
-            timer.clearPlayers();
-        }
-    }
-
-    private void setPlayerSeeker(ServerPlayer player) {
-
-        if(!positions.containsKey(player.getUUID()) || positions.get(player.getUUID()).isSeeker()) return;
-
-        hiderTimer.removePlayer(player.getUUID());
-        seekerTimer.addPlayer(player.getUUID());
-
-        positions.put(player.getUUID(), PositionType.SEEKER);
-
-        AbstractClass clazz = null;
-        if(classes.containsKey(player.getUUID())) {
-            clazz = classes.get(player.getUUID()).getEquivalent(PositionType.SEEKER);
-        }
-
-        if(clazz == null) clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(player.getUUID(), map, PositionType.SEEKER);
-
-        if(clazz != null) {
-            clazz.applyToPlayer(player.getUUID(), null);
-            classes.put(player.getUUID(), clazz);
-        }
-
-        Location loc = Location.getEntityLocation(player);
-
-        currentMap.removeFromTeam(player.getGameProfile().getName());
-        currentMap.addToTeam(player.getGameProfile().getName(), PositionType.SEEKER);
-
-        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(map.getData(PositionType.SEEKER).getColor()), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.LARGE_BALL, loc);
-        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(new Color("FFFFFF")), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.SMALL_BALL, loc);
-
-        checkVictory();
-    }
-
-    private void checkVictory() {
-
-        if(state == ClassicGameState.ENDING) return;
-
-        if(positions.size() <= 1) {
-            endGame(null);
-            return;
-        }
-
-        int hiders = 0;
-        int seekers = 0;
-        for(PositionType t : positions.values()) {
-
-            if(t.isSeeker()) {
-                seekers++;
-            } else {
-                hiders++;
-            }
-        }
-
-        if(hiders == 0) {
-            endGame(PositionType.SEEKER);
-        } else if(seekers == 0) {
-            endGame(PositionType.HIDER);
-        }
     }
 
     private Component getRemainsText() {
@@ -452,81 +278,163 @@ public class ClassicGameMode extends AbstractGameInstance {
         return remain;
     }
 
-    private void broadcastMessage(Component t) {
+    @Override
+    protected void endGame(PositionType winner) {
+        super.endGame(winner);
 
-        for(UUID u : positions.keySet()) {
-
-            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(pl == null) continue;
-
-            pl.sendMessage(t, ChatType.SYSTEM, Util.NIL_UUID);
-
+        for(CustomScoreboard sb : scoreboards.values()) {
+            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Ended").setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW))));
+            sb.update();
         }
+    }
+
+    @Override
+    protected void setupPlayer(UUID u) {
+
+        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        if (player == null) return;
+
+        Component subtitle;
+        if (u.equals(seeker)) {
+            setPosition(u, PositionType.MAIN_SEEKER);
+
+            List<UUID> pls = new ArrayList<>();
+            for(UUID uu : getPlayerIds()) {
+                if(uu.equals(u)) continue;
+                pls.add(uu);
+            }
+            hidden.put(u, pls);
+
+            //subtitle = new TextComponent("Find the ").append(((PositionData) map.getData(PositionType.HIDER)).getRawPluralName());
+            subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.MAIN_SEEKER), map.getData(PositionType.HIDER));
+
+            currentMap.getSeekerSpawn().teleport(player);
+
+        } else {
+            setPosition(u, PositionType.HIDER);
+
+            //subtitle = new TextComponent("Hide from ").append(((PositionData) map.getData(PositionType.MAIN_SEEKER)).getRawProperName());
+            subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.HIDER), map.getData(PositionType.MAIN_SEEKER));
+
+            currentMap.getHiderSpawn().teleport(player);
+
+            hidden.put(u, new ArrayList<>());
+        }
+
+        Component title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_title", positions.get(u)), player, map.getData(positions.get(u)));
+
+        AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(u, map, positions.get(u));
+
+        if (clazz != null) {
+            clazz.applyToPlayer(u, null);
+            classes.put(u, clazz);
+        }
+
+        ClientboundSetTitlesPacket tp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20);
+        ClientboundSetTitlesPacket sp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.SUBTITLE, subtitle, 12, 80, 20);
+
+        player.connection.send(tp);
+        player.connection.send(sp);
+
+        currentMap.addToTeam(player.getGameProfile().getName(), positions.get(u));
+
+        try {
+
+            CustomScoreboard sb = new CustomScoreboard(RandomStringUtils.random(15, true, true), new TextComponent("HideAndSeek").setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW).withBold(true)));
+
+            sb.setLine(7, new TextComponent("                         "));
+            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Hiding").setStyle(Style.EMPTY.withColor(ChatFormatting.BLUE))));
+            sb.setLine(5, new TextComponent("                         "));
+            sb.setLine(4, new TextComponent("Position: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
+            sb.setLine(3, new TextComponent("Map: ").append(TextUtil.parse(map.getName())));
+            sb.setLine(2, new TextComponent("                         "));
+            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().plainCopy().append(new TextComponent(": ").append(new TextComponent(getPlayerCount() - 1 + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
+
+            sb.addPlayer(player);
+
+            scoreboards.put(u, sb);
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onPlayerRemoved(UUID u) {
+        super.onPlayerRemoved(u);
+
+        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        if(pl == null) return;
+
+        currentMap.removeFromTeam(pl.getGameProfile().getName());
+        currentMap.removeTeams(pl);
+
+        scoreboards.get(u).removePlayer(pl);
 
     }
 
-    private void setHidersVisible(boolean visible) {
-        if(visible) {
+    @Override
+    protected void broadcastVictoryTitle(PositionType winner) {
 
-            List<Packet<?>> packets = new ArrayList<>();
+        for(UUID u : lobby.getPlayerIds()) {
 
-            for (Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
-                if (ent.getValue().isSeeker()) continue;
+            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(player == null) continue;
 
-                ServerPlayer hider = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
-                if (hider == null) continue;
-
-                packets.add(new ClientboundAddPlayerPacket(hider));
-                packets.add(new ClientboundSetEntityDataPacket(hider.getId(), hider.getEntityData(), true));
-            }
-
-            for (Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
-                if (!ent.getValue().isSeeker()) continue;
-
-                ServerPlayer seeker = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
-                if (seeker == null) continue;
-
-                for(Packet<?> packet : packets) {
-                    seeker.connection.send(packet);
+            Component title;
+            if(winner == null) {
+                title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_draw", null));
+            } else {
+                if(winner.isSeeker() == positions.get(u).isSeeker()) {
+                    title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_win", winner), map.getData(winner));
+                } else {
+                    title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_lose", winner), map.getData(winner));
                 }
             }
 
-        } else {
-
-            List<Integer> hiders = new ArrayList<>();
-            for (Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
-                if (ent.getValue().isSeeker()) continue;
-
-                ServerPlayer hider = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
-                if (hider == null) continue;
-
-                hiders.add(hider.getId());
-            }
-
-            int[] destroy = new int[hiders.size()];
-
-            for(int i = 0 ; i < hiders.size() ; i++) {
-                destroy[i] = hiders.get(i);
-            }
-
-            ClientboundRemoveEntitiesPacket pck = new ClientboundRemoveEntitiesPacket(destroy);
-
-            for (Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
-                if (!ent.getValue().isSeeker()) continue;
-
-                ServerPlayer seeker = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
-                if (seeker == null) continue;
-
-                seeker.connection.send(pck);
-            }
+            player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.HOSTILE, 1.0f, 1.3f);
+            player.connection.send(new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20));
         }
+
     }
 
+    @Override
+    protected void setPlayerSeeker(UUID u) {
 
-    private enum ClassicGameState {
-        UNINITIALIZED,
-        HIDING,
-        SEEKING,
-        ENDING
+        super.setPlayerSeeker(u);
+
+        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        if(player == null) return;
+
+        AbstractClass clazz = null;
+        if(classes.containsKey(player.getUUID())) {
+            clazz = classes.get(player.getUUID()).getEquivalent(PositionType.SEEKER);
+        }
+
+        if(clazz == null) clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(player.getUUID(), map, PositionType.SEEKER);
+
+        if(clazz != null) {
+            clazz.applyToPlayer(player.getUUID(), null);
+            classes.put(player.getUUID(), clazz);
+        }
+
+        Location loc = Location.getEntityLocation(player);
+
+        currentMap.removeFromTeam(player.getGameProfile().getName());
+        currentMap.addToTeam(player.getGameProfile().getName(), PositionType.SEEKER);
+
+        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(map.getData(PositionType.SEEKER).getColor()), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.LARGE_BALL, loc);
+        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(new Color("FFFFFF")), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.SMALL_BALL, loc);
+
+        scoreboards.get(u).setLine(3, new TextComponent("Position: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
+    }
+
+    @Override
+    protected void checkVictory() {
+        super.checkVictory();
+
+        for(CustomScoreboard sb : scoreboards.values()) {
+            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().plainCopy().append(new TextComponent(": ").append(new TextComponent(countPosition(PositionType.HIDER) + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
+            sb.update();
+        }
     }
 }

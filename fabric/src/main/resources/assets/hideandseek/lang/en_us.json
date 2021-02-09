@@ -1,0 +1,21 @@
+{
+  "gamemode.classic": "{\"text\":\"Classic\",\"color\":\"aqua\"}",
+  "gamemode.competitive": "{\"text\":\"Competitive\",\"color\":\"dark_purple\"}",
+  "gamemode.sardines": "{\"text\":\"Sardines\",\"color\":\"red\"}",
+  "lobby.join": "{\"text\":\"%player_display_name% joined the lobby\",\"color\":\"aqua\"}",
+  "lobby.leave": "{\"text\":\"%player_display_name% left the lobby\",\"color\":\"aqua\"}",
+  "lobby.start_timer": "{\"text\":\"START\",\"color\":\"%hideandseek_lobby_color%\",\"bold\":\"true\"}",
+  "game.start_title": "%hideandseek_player_position_name%",
+  "game.start_subtitle.hider": "Hide from %hideandseek_position_name_proper%",
+  "game.start_subtitle.seeker": "Find the %hideandseek_position_name_plural%",
+  "game.deny_region_entry": "%hideandseek_player_position_name_plural% cannot enter %hideandseek_region_name%!",
+  "game.end_timer": "{\"text\":\"FINISH\",\"color\":\"%hideandseek_lobby_color%\",\"bold\":\"true\"}",
+  "game.hide_timer": "{\"text\":\"%hideandseek_position_name% released in \",\"color\":\"%hideandseek_position_color%\"}",
+  "game.seek_timer": "%hideandseek_position_name% ",
+  "sardines.start_subtitle.hider": "Hide from the %hideandseek_player_position_name_plural%",
+  "sardines.start_subtitle.seeker": "Find %hideandseek_player_position_name_proper%",
+  "game.end_title_draw": "{\"text\":\"DRAW\",\"bold\":\"true\"}",
+  "game.end_title_win": "{\"text\":\"The %hideandseek_position_name_plural% Win!\",\"color\":\"%hideandseek_position_color%\",\"bold\":\"true\"}",
+  "game.end_title_lose": "{\"text\":\"The %hideandseek_position_name_plural% Win!\",\"color\":\"%hideandseek_position_color%\",\"bold\":\"true\"}",
+  "game.end_subtitle": "{\"text\":\"The %hideandseek_position_name%\",\"color\":\"%hideandseek_position_color%\"}"
+}

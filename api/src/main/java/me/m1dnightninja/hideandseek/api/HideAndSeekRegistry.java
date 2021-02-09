@@ -22,6 +22,8 @@ public class HideAndSeekRegistry {
 
     public void registerLobby(AbstractLobby lobby) {
         if(lobbies.containsKey(lobby.getId())) return;
+        if(lobby.getMaps().size() == 0) return;
+
         lobbies.put(lobby.getId(), lobby);
     }
 
@@ -35,9 +37,9 @@ public class HideAndSeekRegistry {
         skins.put(skin.getId(), skin);
     }
 
-    public void registerGameType(String id, GameType type) {
-        if(gameTypes.containsKey(id)) return;
-        gameTypes.put(id, type);
+    public void registerGameType(GameType type) {
+        if(gameTypes.containsKey(type.getId())) return;
+        gameTypes.put(type.getId(), type);
     }
 
 

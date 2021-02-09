@@ -10,14 +10,13 @@ public class SessionManager {
 
     public void startSession(AbstractSession sess) {
         sessions.add(sess);
-        sess.addListener(() -> sessions.remove(sess));
-        sess.initialize();
+        sess.addCallback(() -> sessions.remove(sess));
     }
 
     public AbstractSession getSession(UUID u) {
 
         for(AbstractSession sess : sessions) {
-            if(sess.getPlayers().contains(u)) return sess;
+            if(sess.getPlayerIds().contains(u)) return sess;
         }
         return null;
     }
@@ -80,13 +79,20 @@ public class SessionManager {
 
         boolean out = false;
         for(AbstractSession sess : sessions) {
-            if(sess.getPlayers().contains(u)) {
+            if(sess.getPlayerIds().contains(u)) {
                 sess.onDamaged(u, damager, source, amount);
                 out = true;
             }
         }
 
         return out;
+    }
+
+    public void tick() {
+
+        for(AbstractSession sess : sessions) {
+            sess.onTick();
+        }
     }
 
 }
