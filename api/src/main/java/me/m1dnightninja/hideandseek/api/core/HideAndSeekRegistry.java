@@ -1,4 +1,13 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.core;
+
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.game.PositionType;
+import me.m1dnightninja.hideandseek.api.integration.SkinSetterIntegration;
+import me.m1dnightninja.hideandseek.api.game.*;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
+import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.module.IPlayerDataModule;
+import me.m1dnightninja.midnightcore.api.skin.Skin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +23,25 @@ public class HideAndSeekRegistry {
     private final HashMap<String, GameType> gameTypes = new HashMap<>();
 
     private final HashMap<UUID, HashMap<AbstractMap, HashMap<PositionType, AbstractClass>>> preferredClasses = new HashMap<>();
+
+    private final boolean skinSetterPresent;
+
+    private final IPlayerDataModule playerData;
+
+    public HideAndSeekRegistry() {
+        boolean ss;
+        try {
+            Class.forName("me.m1dnightninja.skinsetter.api.SkinSetterAPI");
+            HideAndSeekAPI.getLogger().info("SkinSetter found!");
+            ss = true;
+        } catch (ClassNotFoundException ex) {
+            ss = false;
+        }
+
+        skinSetterPresent = ss;
+
+        playerData = MidnightCoreAPI.getInstance().getModule(IPlayerDataModule.class);
+    }
 
     public void registerMap(AbstractMap map) {
         if(maps.containsKey(map.getId())) return;
@@ -55,8 +83,24 @@ public class HideAndSeekRegistry {
         return classes.get(id);
     }
 
+    private boolean checked = false;
     public SkinOption getSkin(String id) {
-        return skins.get(id);
+
+        if(checked) {
+            checked = false;
+            return null;
+        }
+        checked = true;
+
+        SkinOption s = skins.get(id);
+
+        if(s == null && skinSetterPresent) {
+            Skin s1 = SkinSetterIntegration.getSkin(id);
+            s = new SkinOption(id, s1);
+        }
+
+        checked = false;
+        return s;
     }
 
     public GameType getGameType(String id) {
@@ -90,6 +134,15 @@ public class HideAndSeekRegistry {
         preferredClasses.computeIfAbsent(u, k -> new HashMap<>());
         preferredClasses.get(u).computeIfAbsent(map, k -> new HashMap<>());
         preferredClasses.get(u).get(map).put(type, clazz);
+
+        ConfigSection sec = playerData.getPlayerData(u);
+        ConfigSection has = sec.getOrCreateSection("hideandseek");
+        ConfigSection cls = has.getOrCreateSection("classes");
+        ConfigSection mpd = cls.getOrCreateSection(map.getId());
+
+        mpd.set(type.getId(), clazz.getId());
+
+        playerData.savePlayerData(u);
     }
 
     public AbstractClass getPreferredClass(UUID u, AbstractMap map, PositionType type) {
@@ -127,6 +180,40 @@ public class HideAndSeekRegistry {
         classes.clear();
         skins.clear();
         gameTypes.clear();
+    }
+
+    public void loadData(UUID u) {
+
+        ConfigSection sec = playerData.getPlayerData(u);
+
+        // Root
+        if(!sec.has("hideandseek", ConfigSection.class)) return;
+        ConfigSection has = sec.getSection("hideandseek");
+
+        // Classes
+        if(!has.has("classes", ConfigSection.class)) return;
+        ConfigSection classes = has.getSection("classes");
+
+        // Find all maps within classes
+        for(String s : classes.getKeys()) {
+
+            if(!classes.has(s, ConfigSection.class) || !maps.containsKey(s)) continue;
+
+            ConfigSection map = classes.getSection(s);
+
+            for(String pt : map.getKeys()) {
+
+                PositionType pos = PositionType.getById(pt);
+                if(pos == null) continue;
+
+                AbstractMap mp = maps.get(s);
+                AbstractClass clazz = mp.getClassOrGlobal(map.getString(pt));
+
+                setPreferredClass(u, mp, pos, clazz);
+            }
+        }
+
+        playerData.savePlayerData(u);
     }
 
 }

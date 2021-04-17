@@ -1,6 +1,6 @@
 package me.m1dnightninja.hideandseek.fabric.manager;
 
-import me.m1dnightninja.hideandseek.api.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.hideandseek.common.AbstractDimensionManager;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;

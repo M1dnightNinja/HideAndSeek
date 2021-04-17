@@ -1,6 +1,6 @@
 package me.m1dnightninja.hideandseek.fabric.util;
 
-import me.m1dnightninja.hideandseek.api.DamageSource;
+import me.m1dnightninja.hideandseek.api.game.DamageSource;
 
 
 public final class ConversionUtil {

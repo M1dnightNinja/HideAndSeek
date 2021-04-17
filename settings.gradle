@@ -9,7 +9,8 @@ pluginManagement {
 }
 
 rootProject.name = 'hideandseek'
-include 'common'
+
 include 'api'
+include 'common'
 include 'fabric'
 include 'spigot'

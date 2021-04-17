@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(TextColor.class)
 public interface AccessorTextColor {
+
     @Invoker
     String callFormatValue();
 }

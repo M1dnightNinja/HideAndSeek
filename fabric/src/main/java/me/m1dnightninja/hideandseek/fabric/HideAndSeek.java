@@ -1,10 +1,9 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import me.m1dnightninja.hideandseek.fabric.command.LaunchEntityCommand;
+import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.command.MainCommand;
+import me.m1dnightninja.hideandseek.fabric.game.*;
 import me.m1dnightninja.hideandseek.fabric.gamemode.ClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.manager.DimensionManager;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
@@ -17,12 +16,13 @@ import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.common.JsonConfigProvider;
 import me.m1dnightninja.midnightcore.common.JsonWrapper;
 import me.m1dnightninja.midnightcore.fabric.Logger;
+import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
+import me.m1dnightninja.midnightcore.fabric.api.MidnightCoreModInitializer;
 import me.m1dnightninja.midnightcore.fabric.api.event.*;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.module.LangModule;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
-import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.network.chat.Component;
@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-public class HideAndSeek implements ModInitializer {
+public class HideAndSeek implements MidnightCoreModInitializer {
 
     private static HideAndSeek instance;
 
@@ -48,11 +48,14 @@ public class HideAndSeek implements ModInitializer {
     private LangProvider langProvider;
     private ConfigProvider configProvider;
 
+    private ILogger logger;
+    private File langFolder;
+
     @Override
     public void onInitialize() {
 
         instance = this;
-        ILogger logger = new Logger(LogManager.getLogger());
+        logger = new Logger(LogManager.getLogger());
 
         configFolder = Paths.get("config/HideAndSeek").toFile();
         if(!configFolder.exists() && !(configFolder.mkdirs() && configFolder.setReadable(true) && configFolder.setWritable(true))) {
@@ -62,7 +65,7 @@ public class HideAndSeek implements ModInitializer {
 
         this.configProvider = new JsonConfigProvider();
 
-        File langFolder = new File(configFolder, "lang");
+        langFolder = new File(configFolder, "lang");
         if(!langFolder.exists() || !langFolder.isDirectory()) {
 
             if(langFolder.exists() && !FileUtils.deleteQuietly(langFolder)) {
@@ -72,10 +75,14 @@ public class HideAndSeek implements ModInitializer {
 
             if(!langFolder.mkdir()) {
                 logger.warn("Unable to create lang folder!");
-                return;
             }
-
         }
+    }
+
+    @Override
+    public void onAPICreated(MidnightCore midnightCore, MidnightCoreAPI midnightCoreAPI) {
+
+        if(!langFolder.exists()) return;
 
         if(langFolder.listFiles().length == 0) {
 
@@ -83,25 +90,28 @@ public class HideAndSeek implements ModInitializer {
             new JsonWrapper(f).save();
         }
 
-        JsonObject obj = new GsonBuilder().setPrettyPrinting().create().fromJson(new InputStreamReader(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json")), JsonObject.class);
-        HashMap<String, String> defaults = new HashMap<>();
+        JsonWrapper w = new JsonWrapper();
+        w.load(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json"));
 
-        for(java.util.Map.Entry<String, JsonElement> ent : obj.entrySet()) {
+        HashMap<String, String> defaults = new HashMap<>();
+        for(java.util.Map.Entry<String, JsonElement> ent : w.getRoot().entrySet()) {
             defaults.put(ent.getKey(), ent.getValue().getAsString());
         }
 
-        Event.register(MidnightCoreInitEvent.class, this, initEvent -> {
+        if(!MidnightCoreAPI.getInstance().areAllModulesLoaded("midnightcore:skin", "midnightcore:dimension", "midnightcore:lang", "midnightcore:save_point", "midnightcore:player_data")) {
 
-            loadLang(MidnightCoreAPI.getInstance().getModule(LangModule.class), langFolder, defaults);
+            logger.warn("One or more required MidnightCore modules are not loaded!");
+            return;
+        }
 
-            dimensionManager = new DimensionManager();
+        loadLang(MidnightCoreAPI.getInstance().getModule(LangModule.class), langFolder, defaults);
 
-            api = new HideAndSeekAPI(logger, new HideAndSeekRegistry(), langProvider);
+        dimensionManager = new DimensionManager();
 
-            loadGameModes();
-            loadConfig();
+        api = new HideAndSeekAPI(logger, langProvider);
 
-        });
+        loadGameModes();
+        loadConfig();
 
         Event.register(PlayerDisconnectEvent.class, this, event -> {
             AbstractSession sess = api.getSessionManager().getSession(event.getPlayer().getUUID());
@@ -126,16 +136,13 @@ public class HideAndSeek implements ModInitializer {
         });
 
         Event.register(ServerTickEvent.class, this, event -> api.getSessionManager().tick());
+        Event.register(PlayerJoinEvent.class, this, event -> HideAndSeekAPI.getInstance().getRegistry().loadData(event.getPlayer().getUUID()));
 
-
-        CommandRegistrationCallback.EVENT.register((commandDispatcher, b) -> {
-            new MainCommand().register(commandDispatcher);
-            new LaunchEntityCommand().register(commandDispatcher);
-        });
+        CommandRegistrationCallback.EVENT.register((commandDispatcher, b) -> new MainCommand().register(commandDispatcher));
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> api.getSessionManager().shutdownAll());
-
     }
+
 
     public DimensionManager getDimensionManager() {
         return dimensionManager;
@@ -277,8 +284,6 @@ public class HideAndSeek implements ModInitializer {
 
         langProvider = (LangProvider) module.createProvider("hideandseek", langFolder, defaults);
     }
-
-
 
     public static HideAndSeek getInstance() {
         return instance;

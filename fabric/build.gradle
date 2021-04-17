@@ -1,13 +1,12 @@
 import net.fabricmc.loom.task.RemapJarTask
 
 plugins {
-    id 'fabric-loom' version '0.5-SNAPSHOT'
+    id 'fabric-loom' version '0.6-SNAPSHOT'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
 }
 
 repositories {
     maven { url 'https://maven.fabricmc.net/' }
-    mavenLocal()
 }
 
 configurations {
@@ -15,31 +14,35 @@ configurations {
     compile.extendsFrom shade
 }
 
-def fabricApiVersion = "0.30.0+1.16"
-
 dependencies {
 
-    minecraft "com.mojang:minecraft:${project.ext.minecraftVersion}"
-    mappings minecraft.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:0.11.1"
+    minecraft("com.mojang:minecraft:${project.ext.minecraftVersion}")
+    mappings(minecraft.officialMojangMappings())
+    modImplementation("net.fabricmc:fabric-loader:0.11.3")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.32.5+1.16")
 
-    //Fabric api
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
-
-    modImplementation "me.m1dnightninja.midnightcore:fabric:1.0.0"
-    modImplementation "me.m1dnightninja.midnightcore:common:1.0.0"
-    modImplementation "me.m1dnightninja.midnightcore:api:1.0.0"
+    modImplementation("me.m1dnightninja.midnightcore:api:1.0.0")
+    modImplementation("me.m1dnightninja.midnightcore:common:1.0.0")
+    modImplementation("me.m1dnightninja.midnightcore:fabric:1.0.0") {
+        transitive = false
+    }
 
     shade project(':api')
     shade project(':common')
+
 }
 
 processResources {
-    inputs.property "version", project.version
+
+    Map<String, ?> ex = new HashMap<>()
+    ex.put("version", project.ext.fullVersion)
+    ex.put("modid", project.ext.modid)
+    ex.put("modname", project.ext.modname)
+    ex.put("modclass", project.ext.modclass)
 
     from(sourceSets.main.resources.srcDirs) {
-        include "fabric.mod.json"
-        expand "version": project.version
+        include("fabric.mod.json")
+        expand(ex)
     }
 
     from(sourceSets.main.resources.srcDirs) {
@@ -49,7 +52,7 @@ processResources {
 
 shadowJar {
 
-    archiveBaseName.set("${project.ext.archiveName}-fabric-dev")
+    setArchivesBaseName("${project.ext.archiveName}-fabric-dev")
     configurations = [project.configurations.shade]
 
     dependencies {
@@ -63,32 +66,40 @@ shadowJar {
 
 task remapShadowJar(type: RemapJarTask) {
 
-    dependsOn tasks.shadowJar
-    input = tasks.shadowJar.archivePath
-    addNestedDependencies = true
     archiveBaseName.set("${project.ext.archiveName}-fabric-mc${project.ext.minecraftVersion}")
+
+    dependsOn(tasks.shadowJar)
+    input = tasks.shadowJar.getArchivePath()
+    addNestedDependencies = true
+
 }
 
 tasks.assemble.dependsOn tasks.remapShadowJar
 
 artifacts {
     archives remapShadowJar
-    shadow shadowJar
+    shadow sourcesJar
 }
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifact(remapJar) {
-                builtBy remapJar
-            }
-            artifact(sourcesJar) {
-                builtBy remapSourcesJar
+            artifacts {
+                remapJar
+                remapSourcesJar
             }
         }
     }
 
     repositories {
-        mavenLocal()
+        maven {
+            if (project.hasProperty("pubUrl")) {
+                url = project.pubUrl as String
+                credentials {
+                    username project.pubUser as String
+                    password project.pubPass as String
+                }
+            }
+        }
     }
 }

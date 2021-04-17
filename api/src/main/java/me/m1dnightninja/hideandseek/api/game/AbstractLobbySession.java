@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 
@@ -28,12 +29,8 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
             if (getPlayerCount() == lobby.getMinPlayers()) {
 
-                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, new AbstractTimer.TimerCallback() {
-                    @Override
-                    public void tick(int secondsLeft) { }
-
-                    @Override
-                    public void finish() {
+                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, secondsLeft -> {
+                    if(secondsLeft == 0) {
                         if(isRunning()) return;
                         startGame(null, null);
                     }
@@ -52,10 +49,18 @@ public abstract class AbstractLobbySession extends AbstractSession {
         if(startTimer != null) {
             startTimer.cancel();
         }
-        doGameStart(seeker, map);
-    }
 
-    protected abstract void doGameStart(UUID seeker, AbstractMap map);
+        GameType type = lobby.getGameType();
+
+        if(type == null) {
+            shutdown();
+            return;
+        }
+
+        runningInstance = type.create(this, seeker, map);
+        runningInstance.addCallback(this::shutdown);
+        runningInstance.start();
+    }
 
     public AbstractLobby getLobby() {
         return lobby;
@@ -71,7 +76,10 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
     @Override
     protected void onPlayerRemoved(UUID u) {
-        if(isRunning()) {
+
+        if(runningInstance != null) {
+
+            HideAndSeekAPI.getLogger().info("removing from game " + runningInstance.getClass().getName());
             runningInstance.removePlayer(u);
 
         } else if(getPlayerCount() < lobby.getMinPlayers() && startTimer != null) {
@@ -81,7 +89,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
     }
 
     @Override
-    protected void onTick() {
+    public void onTick() {
         if(isRunning()) runningInstance.onTick();
     }
 

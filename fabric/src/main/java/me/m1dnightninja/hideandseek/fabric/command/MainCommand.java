@@ -5,12 +5,18 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.m1dnightninja.hideandseek.api.*;
-import me.m1dnightninja.hideandseek.fabric.EditingSession;
+import me.m1dnightninja.hideandseek.api.game.*;
+import me.m1dnightninja.hideandseek.fabric.game.EditingSession;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
-import me.m1dnightninja.hideandseek.fabric.Lobby;
-import me.m1dnightninja.hideandseek.fabric.LobbySession;
+import me.m1dnightninja.hideandseek.fabric.game.Lobby;
+import me.m1dnightninja.hideandseek.fabric.game.LobbySession;
+import me.m1dnightninja.hideandseek.fabric.game.Map;
 import me.m1dnightninja.midnightcore.api.AbstractInventoryGUI;
+import me.m1dnightninja.midnightcore.api.skin.Skin;
 import me.m1dnightninja.midnightcore.fabric.api.InventoryGUI;
+import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
+import me.m1dnightninja.midnightcore.fabric.util.ItemBuilder;
+import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,7 +26,12 @@ import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.TextComponent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.animal.Parrot;
+import net.minecraft.world.entity.monster.Shulker;
+import net.minecraft.world.item.ChorusFruitItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,26 +42,29 @@ public class MainCommand {
     public void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 
         dispatcher.register(Commands.literal("has")
+            .requires(context -> hasPermission(context, "hideandseek.command"))
             .then(Commands.literal("join")
-                // TODO: perms (.requires("hideandseek.command.join"))
+                .requires(context -> hasPermission(context, "hideandseek.command.join"))
                 .executes(context -> joinCommand(context, null, null))
                 .then(Commands.argument("lobby", StringArgumentType.word())
                     .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getLobbyNames(HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(context.getSource().getPlayerOrException().getUUID())), builder))
                     .executes(context -> joinCommand(context, context.getArgument("lobby", String.class), null))
                     .then(Commands.argument("players", EntityArgument.players())
-                        // .requires("hideandseek.command.join.others")
+                        .requires(context -> hasPermission(context, "hideandseek.command.join.others"))
                         .executes(context -> joinCommand(context, context.getArgument("lobby", String.class), context.getArgument("players", EntitySelector.class).findPlayers(context.getSource())))
                     )
                 )
             )
             .then(Commands.literal("leave")
+                .requires(context -> hasPermission(context, "hideandseek.command.leave"))
                 .executes(context -> leaveCommand(context, null))
                 .then(Commands.argument("players", EntityArgument.players())
-                    // .requires("hideandseek.command.leave.others")
+                    .requires(context -> hasPermission(context, "hideandseek.command.leave.others"))
                     .executes(context -> leaveCommand(context, context.getArgument("players", EntitySelector.class).findPlayers(context.getSource())))
                 )
             )
             .then(Commands.literal("start")
+                .requires(context -> hasPermission(context, "hideandseek.command.start"))
                 .executes(context -> startCommand(context, null, null))
                 .then(Commands.argument("map", StringArgumentType.word())
                     .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getEditableMapNames(null), builder))
@@ -64,18 +78,35 @@ public class MainCommand {
                 )
             )
             .then(Commands.literal("reload")
+                .requires(context -> hasPermission(context, "hideandseek.command.reload"))
                 .executes(this::reloadCommand)
             )
             .then(Commands.literal("edit")
+                .requires(context -> hasPermission(context, "hideandseek.command.edit"))
                 .then(Commands.argument("map", StringArgumentType.word())
                     .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getEditableMapNames(context.getSource().getPlayerOrException().getUUID()), builder))
+                    .executes(context -> editCommand(context, context.getArgument("map", String.class), Collections.singletonList(context.getSource().getPlayerOrException())))
                     .then(Commands.argument("players", EntityArgument.players())
+                        .requires(context -> hasPermission(context, "hideandseek.command.edit.others"))
                         .executes(context -> editCommand(context, context.getArgument("map", String.class), context.getArgument("players", EntitySelector.class).findPlayers(context.getSource())))
                     )
                 )
             )
+            .then(Commands.literal("customize")
+                .requires(context -> hasPermission(context, "hideandseek.command.customize"))
+                .executes(context -> customizeCommand(context, context.getSource().getPlayerOrException()))
+                .then(Commands.argument("player", EntityArgument.player())
+                    .requires(context -> hasPermission(context, "hideandseek.command.customize.others"))
+                    .executes(context -> customizeCommand(context, context.getArgument("player", EntitySelector.class).findSinglePlayer(context.getSource())))
+                )
+            )
         );
 
+    }
+
+    private boolean hasPermission(CommandSourceStack st, String perm) {
+
+        return st.hasPermission(2) || PermissionHelper.check(st, perm);
     }
 
     private int joinCommand(CommandContext<CommandSourceStack> context, String lobby, List<ServerPlayer> players) {
@@ -116,9 +147,10 @@ public class MainCommand {
                         display = Lobby.createDefaultItem(lby);
                     }
 
-                    gui.setItem(display, index, type -> {
+                    gui.setItem(display, index, (type, u) -> {
                         if (type == AbstractInventoryGUI.ClickType.LEFT) {
                             joinCommand(context, lby.getId(), Collections.singletonList(player));
+                            player.closeContainer();
                         }
                     });
 
@@ -234,8 +266,10 @@ public class MainCommand {
 
     private int editCommand(CommandContext<CommandSourceStack> context, String map, List<ServerPlayer> players) {
 
+        Entity ent = context.getSource().getEntity();
+
         AbstractMap mp = HideAndSeekAPI.getInstance().getRegistry().getMap(map);
-        if(mp == null) {
+        if(mp == null || (ent != null && !mp.canEdit(ent.getUUID()))) {
             context.getSource().sendFailure(new TextComponent("That is not a valid map!"));
             return 0;
         }
@@ -250,6 +284,86 @@ public class MainCommand {
         }
 
         return players.size();
+    }
+
+    private int customizeCommand(CommandContext<CommandSourceStack> context, ServerPlayer target) {
+
+        try {
+            InventoryGUI gui = new InventoryGUI("Customize");
+            InventoryGUI mapsGui = new InventoryGUI("Choose a Map");
+
+            int current = 0;
+            for (AbstractMap m : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
+                for (PositionType tp : PositionType.values()) {
+                    if (m.getData(tp).getClasses().size() > 1) {
+
+                        mapsGui.setItem(Map.getDisplayStack(m), current, (type, user) -> {
+
+                            InventoryGUI pos = new InventoryGUI("Select a Role");
+
+                            int i = 0;
+                            for (PositionType pt : PositionType.values()) {
+                                if (m.getData(pt).getClasses().size() > 1) {
+
+                                    ItemStack is = ItemBuilder.woolWithColor(m.getData(pt).getColor()).withName(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(m.getData(pt).getName()))).build();
+
+                                    pos.setItem(is, i, (type1, user1) -> openMapClassGui(user1, m, pt));
+
+                                    i++;
+                                }
+                            }
+
+                            pos.open(user, 0);
+
+                        });
+
+                        current++;
+                        break;
+                    }
+                }
+            }
+
+            if (current == 0) {
+                context.getSource().sendFailure(new TextComponent("There is nothing to customize!"));
+            }
+
+            ItemStack is = ItemBuilder.of(Items.DIAMOND).withName(new TextComponent("Change Preferred Classes").setStyle(ItemBuilder.BASE_STYLE.withColor(ChatFormatting.AQUA))).build();
+            gui.setItem(is, 4, (type, user) -> {
+                if (type == AbstractInventoryGUI.ClickType.LEFT) {
+                    mapsGui.open(user, 0);
+                }
+            });
+
+            gui.open(target.getUUID(), 0);
+
+        } catch(Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return 0;
+
+    }
+
+    private void openMapClassGui(UUID user, AbstractMap map, PositionType type) {
+
+        InventoryGUI gui = new InventoryGUI("Select a Class");
+
+        int i = 0;
+        for(AbstractClass clazz : map.getData(type).getClasses()) {
+
+            Skin s = null;
+            if(clazz.getSkins().size() > 0) {
+                s = clazz.getSkins().get(0).getSkin();
+            }
+
+            ItemStack is = ItemBuilder.headWithSkin(s).withName(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(clazz.getName()))).build();
+            gui.setItem(is, i, (ctype, user1) -> HideAndSeekAPI.getInstance().getRegistry().setPreferredClass(user1, map, type, clazz));
+            i++;
+
+        }
+
+        gui.open(user, 0);
+
     }
 
 }

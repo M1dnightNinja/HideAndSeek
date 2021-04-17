@@ -1,9 +1,14 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.AbstractPositionData;
+import me.m1dnightninja.hideandseek.api.game.AbstractSession;
+import me.m1dnightninja.hideandseek.api.game.PositionType;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerLevel;
@@ -14,10 +19,12 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 public class MapInstance {
+
+    private static final String emptyResPack = "https://github.com/M1dnightNinja/HideAndSeek/blob/master/empty.zip?raw=true";
+    private static final String emptyHash = "F8CC3481867628951AD312B9FB886223856F7AB0";
 
     private final AbstractMap base;
     private final ServerLevel world;
@@ -120,9 +127,19 @@ public class MapInstance {
         }
     }
 
-    public void removeTeams(ServerPlayer pl) {
+    public void onJoin(ServerPlayer pl) {
+        if(getBaseMap().getResourcePack() != null) {
+            HideAndSeekAPI.getLogger().warn("Sending pack to " + pl.getName());
+            pl.connection.send(new ClientboundResourcePackPacket(getBaseMap().getResourcePack(), getBaseMap().getResourcePackHash()));
+        }
+    }
+
+    public void onLeave(ServerPlayer pl) {
         for(PlayerTeam t : teams.values()) {
             pl.connection.send(new ClientboundSetPlayerTeamPacket(t, 1));
+        }
+        if(getBaseMap().getResourcePack() != null) {
+            pl.connection.send(new ClientboundResourcePackPacket(emptyResPack, emptyHash));
         }
     }
 

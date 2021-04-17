@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 
@@ -15,6 +16,10 @@ public abstract class AbstractMap {
     protected final Vec3d seekerSpawn;
 
     protected String name;
+    protected List<String> description = new ArrayList<>();
+
+    protected UUID author;
+    protected List<UUID> editors = new ArrayList<>();
 
     protected boolean randomTime;
     protected boolean rain;
@@ -36,6 +41,8 @@ public abstract class AbstractMap {
     protected float seekerRotation = 0;
 
     protected String dimensionType;
+    protected String resPack;
+    protected String resPackHash;
 
     public AbstractMap(String id, File mapFolder, Vec3d hiderSpawn, Vec3d seekerSpawn) {
         this.id = id;
@@ -57,6 +64,18 @@ public abstract class AbstractMap {
 
     public String getName() {
         return name;
+    }
+
+    public List<String> getDescription() {
+        return description;
+    }
+
+    public UUID getAuthor() {
+        return author;
+    }
+
+    public List<UUID> getEditors() {
+        return editors;
     }
 
     public File getMapFolder() {
@@ -99,6 +118,16 @@ public abstract class AbstractMap {
         return mapClasses.get(id);
     }
 
+    public AbstractClass getClassOrGlobal(String id) {
+        AbstractClass clazz = getClass(id);
+
+        if(clazz == null) {
+            clazz = HideAndSeekAPI.getInstance().getRegistry().getClass(id);
+        }
+
+        return clazz;
+    }
+
     public AbstractClass chooseRandomClass(PositionType type) {
 
         if(positionData.get(type).getClasses().size() == 0) return null;
@@ -137,39 +166,12 @@ public abstract class AbstractMap {
         return tagSources;
     }
 
+    public String getResourcePack() { return resPack; }
+
+    public String getResourcePackHash() { return resPackHash == null ? "" : resPackHash; }
+
+
     public abstract boolean canEdit(UUID u);
-
-    public void printDebug() {
-
-        HideAndSeekAPI.getLogger().warn("id: " +  id);
-        HideAndSeekAPI.getLogger().warn("name: " + name);
-        HideAndSeekAPI.getLogger().warn("random_time: " + randomTime);
-        HideAndSeekAPI.getLogger().warn("rain: " + rain);
-        HideAndSeekAPI.getLogger().warn("thunder: " + thunder);
-        HideAndSeekAPI.getLogger().warn("hide_time: " + hideTime);
-        HideAndSeekAPI.getLogger().warn("seek_time: " + seekTime);
-        HideAndSeekAPI.getLogger().warn("firework_spawners: ");
-        for(Vec3d v : fireworkSpawners) {
-            HideAndSeekAPI.getLogger().warn("  - " + v.toString());
-        }
-        HideAndSeekAPI.getLogger().warn("regions: " + regions.size());
-        HideAndSeekAPI.getLogger().warn("hider_spawn_rotation: " + hiderRotation);
-        HideAndSeekAPI.getLogger().warn("seeker_spawn_rotation: " + seekerRotation);
-        HideAndSeekAPI.getLogger().warn("dimension: " + dimensionType);
-        HideAndSeekAPI.getLogger().warn("reset_sources: ");
-        for(DamageSource src : resetSources) {
-            HideAndSeekAPI.getLogger().warn("  - " + src.name());
-        }
-        HideAndSeekAPI.getLogger().warn("tag_sources: ");
-        for(DamageSource src : tagSources) {
-            HideAndSeekAPI.getLogger().warn("  - " + src.name());
-        }
-        HideAndSeekAPI.getLogger().warn("classes: ");
-        for(String cid : mapClasses.keySet()) {
-            HideAndSeekAPI.getLogger().warn("  - " + cid);
-        }
-
-    }
 
 
     public void fromConfig(ConfigSection sec) {
@@ -178,8 +180,23 @@ public abstract class AbstractMap {
             name = sec.getString("name");
         }
 
+        if(sec.has("description", List.class)) {
+            description.addAll(sec.getStringList("description"));
+        }
+
         if(sec.has("random_time", Boolean.TYPE)) {
             randomTime = sec.getBoolean("random_time");
+        }
+
+        if(sec.has("author", String.class)) {
+            author = UUID.fromString(sec.getString("author"));
+        }
+
+        if(sec.has("editors", List.class)) {
+            for(Object o : sec.getList("editors")) {
+                if(!(o instanceof String)) continue;
+                editors.add(UUID.fromString((String) o));
+            }
         }
 
         if(sec.has("rain", Boolean.TYPE)) {
@@ -208,16 +225,7 @@ public abstract class AbstractMap {
 
         if(sec.has("regions", List.class)) {
             regions.clear();
-            for(Object o : sec.get("regions", List.class)) {
-                if(!(o instanceof ConfigSection)) continue;
-
-                Region reg = Region.parse((ConfigSection) o);
-                if(reg == null) {
-                    HideAndSeekAPI.getLogger().warn("Region was parsed as null!");
-                } else {
-                    regions.add(reg);
-                }
-            }
+            regions.addAll(sec.getList("regions", Region.class));
         }
 
         if(sec.has("hider_spawn_rotation", Number.class)) {
@@ -250,6 +258,14 @@ public abstract class AbstractMap {
 
                 tagSources.add(DamageSource.valueOf((String) o));
             }
+        }
+
+        if(sec.has("resource_pack", String.class)) {
+            resPack = sec.getString("resource_pack");
+        }
+
+        if(sec.has("resource_pack_sha1", String.class)) {
+            resPackHash = sec.getString("resource_pack_sha1");
         }
 
     }

@@ -1,9 +1,9 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
-import me.m1dnightninja.hideandseek.api.AbstractClass;
+import me.m1dnightninja.hideandseek.api.game.AbstractClass;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.api.SkinOption;
+import me.m1dnightninja.hideandseek.api.game.SkinOption;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.ISkinModule;

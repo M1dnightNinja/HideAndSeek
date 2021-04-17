@@ -1,4 +1,7 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.core;
+
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.game.*;
 
 import java.util.ArrayList;
 import java.util.List;

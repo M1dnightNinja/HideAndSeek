@@ -1,6 +1,7 @@
 package me.m1dnightninja.hideandseek.common;
 
 import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.lang.AbstractLangProvider;
@@ -60,16 +61,10 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             }
         }
 
-        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null), this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int timeLeft) {
-                if(timeLeft > 0 && timeLeft < 6) {
-                    playTickSound();
-                }
-            }
-
-            @Override
-            public void finish() {
+        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null), this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, timeLeft -> {
+            if(timeLeft > 0 && timeLeft < 6) {
+                playTickSound();
+            } else if(timeLeft == 0) {
                 playReleaseSound();
                 startSeeking();
             }
@@ -89,16 +84,10 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         state = ClassicGameState.SEEKING;
         cancelTimers();
 
-        hiderTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", PositionType.HIDER), this, lobby, map.getData(PositionType.HIDER)), map.getSeekTime(), false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int timeLeft) {
-                if(timeLeft > 0 && timeLeft < 6) {
-                    playTickSound();
-                }
-            }
-
-            @Override
-            public void finish() {
+        hiderTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", PositionType.HIDER), this, lobby, map.getData(PositionType.HIDER)), map.getSeekTime(), false, timeLeft -> {
+            if(timeLeft > 0 && timeLeft < 6) {
+                playTickSound();
+            } else if(timeLeft == 0) {
                 endGame(PositionType.HIDER);
             }
         });
@@ -176,16 +165,9 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         broadcastVictoryTitle(winner);
 
         String s = HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("end_timer", null), this, lobby, lobby.getLobby());
-        HideAndSeekAPI.getLogger().warn(s);
 
-        AbstractTimer endTimer = MidnightCoreAPI.getInstance().createTimer(s, 15, false, new AbstractTimer.TimerCallback() {
-            @Override
-            public void tick(int secondsLeft) { }
-
-            @Override
-            public void finish() {
-                shutdown();
-            }
+        AbstractTimer endTimer = MidnightCoreAPI.getInstance().createTimer(s, 15, false, secondsLeft -> {
+            if(secondsLeft == 0) shutdown();
         });
 
         for(UUID u : getPlayerIds()) {
@@ -232,7 +214,6 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         timers.clear();
     }
 
-    //protected abstract AbstractTimer createTimer(String parse, String suffix, int time, Color apply, AbstractTimer.TimerCallback cb);
     protected abstract void loadWorld(AbstractMap map, Runnable callback);
     protected abstract void unloadWorld();
 

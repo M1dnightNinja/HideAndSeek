@@ -1,3 +1,4 @@
+
 plugins {
     id 'com.github.johnrengelman.shadow' version '6.1.0'
 }
@@ -17,24 +18,34 @@ repositories {
         url "https://libraries.minecraft.net/"
     }
     maven {
-        url "https://mdmc.ddns.net/maven"
+        url "https://jitpack.io/"
     }
 }
 
 dependencies {
 
-    compile "org.spigotmc:spigot:${project.ext.minecraftVersion}-R0.1-SNAPSHOT"
+    compileOnly("org.spigotmc:spigot:${project.ext.minecraftVersion}-R0.1-SNAPSHOT")
 
-    shade project(':api')
-    shade project(':common')
+    compileOnly("me.m1dnightninja.midnightcore:api:1.0.0")
+    compileOnly("me.m1dnightninja.midnightcore:common:1.0.0")
+    compileOnly("me.m1dnightninja.midnightcore:spigot:1.0.0")
+
+    shade(project(":api"))
+    shade(project(":common"))
+
 }
 
 processResources {
-    inputs.property "version", project.version
+
+    Map<String, ?> ex = new HashMap<>()
+    ex.put("version", project.ext.fullVersion)
+    ex.put("modid", project.ext.modid)
+    ex.put("modname", project.ext.modname)
+    ex.put("modclass", project.ext.modclass)
 
     from(sourceSets.main.resources.srcDirs) {
         include "plugin.yml"
-        expand "version": project.version
+        expand(ex)
     }
 
     from(sourceSets.main.resources.srcDirs) {
@@ -44,7 +55,7 @@ processResources {
 
 shadowJar {
 
-    archiveBaseName.set("${project.ext.archiveName}-spigot")
+    archiveBaseName.set("${project.ext.archiveName}-spigot-mc${project.ext.minecraftVersion}")
     configurations = [project.configurations.shade]
 
     dependencies {
@@ -59,5 +70,28 @@ shadowJar {
 tasks.assemble.dependsOn tasks.shadowJar
 
 artifacts {
-    archives shadowJar
+    archives jar
+    shadow sourcesJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifacts {
+                jar
+                sourcesJar
+            }
+        }
+    }
+    repositories {
+        maven {
+            if (project.hasProperty("pubUrl")) {
+                url = project.pubUrl as String
+                credentials {
+                    username project.pubUser as String
+                    password project.pubPass as String
+                }
+            }
+        }
+    }
 }

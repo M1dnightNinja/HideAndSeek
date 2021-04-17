@@ -1,9 +1,9 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
-import me.m1dnightninja.hideandseek.api.AbstractMap;
-import me.m1dnightninja.hideandseek.api.AbstractSession;
-import me.m1dnightninja.hideandseek.api.DamageSource;
-import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.AbstractSession;
+import me.m1dnightninja.hideandseek.api.game.DamageSource;
+import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
@@ -24,12 +24,13 @@ public class EditingSession extends AbstractSession {
     public EditingSession(AbstractMap map) {
         this.map = map;
 
-        HideAndSeek.getInstance().getDimensionManager().loadMapWorld(map, map.getId() + "_editing", "world_editing",  world -> {
+        HideAndSeek.getInstance().getDimensionManager().loadMapWorld(map, map.getId() + "_editing", "world_editing", world -> {
             if(world == null) return;
             instance = new MapInstance(this, map, world, false);
 
             for(ServerPlayer player : waiting) {
                 instance.getHiderSpawn().teleport(player);
+                instance.onJoin(player);
             }
 
             initialized = true;
@@ -55,12 +56,19 @@ public class EditingSession extends AbstractSession {
             waiting.add(player);
         } else {
             instance.getHiderSpawn().teleport(player);
+            instance.onJoin(player);
         }
         MidnightCoreAPI.getInstance().getModule(ISavePointModule.class).resetPlayer(u);
     }
 
     @Override
-    protected void onPlayerRemoved(UUID u) { }
+    protected void onPlayerRemoved(UUID u) {
+
+        if(instance != null) {
+            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            instance.onLeave(player);
+        }
+    }
 
     @Override
     protected void onShutdown() {
@@ -69,7 +77,7 @@ public class EditingSession extends AbstractSession {
     }
 
     @Override
-    protected void onTick() { }
+    public void onTick() { }
 
     @Override
     public void onDamaged(UUID u, UUID damager, DamageSource damageSource, float amount) { }

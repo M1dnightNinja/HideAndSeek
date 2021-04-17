@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 
@@ -22,8 +23,8 @@ public abstract class AbstractPositionData {
         this.type = type;
         this.classes = new ArrayList<>();
 
-        this.name = type.name;
-        this.color = type.defaultColor;
+        this.name = type.getName();
+        this.color = type.getDefaultColor();
     }
 
     public PositionType getType() {

@@ -1,20 +1,32 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
-import me.m1dnightninja.hideandseek.api.AbstractMap;
-import me.m1dnightninja.hideandseek.api.PositionType;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.PositionType;
+import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
+import me.m1dnightninja.midnightcore.fabric.util.ItemBuilder;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class Map extends AbstractMap {
+
+    private ItemStack item;
 
     public static void registerPlaceholders(ILangModule<Component> mod) {
 
@@ -33,9 +45,9 @@ public class Map extends AbstractMap {
     @Override
     public boolean canEdit(UUID u) {
         ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        return player != null;
+        if(player == null) return false;
 
-        // TODO: Check Permissions
+        return player.getUUID().equals(author) || editors.contains(player.getUUID()) || PermissionHelper.check(u, "hideandseek.edit." + getId());
     }
 
     @Override
@@ -49,6 +61,30 @@ public class Map extends AbstractMap {
                 GameClass clazz = GameClass.parse((ConfigSection) o);
                 mapClasses.put(clazz.getId(), clazz);
             }
+        }
+
+        if(sec.has("item", ConfigSection.class)) {
+            ConfigSection isec = sec.getSection("item");
+
+            ListTag cmp = new ListTag();
+            for(String s : description) {
+                cmp.add(StringTag.valueOf(Component.Serializer.toJson(TextUtil.parse(s))));
+            }
+
+            item = ParseUtil.parseItemStack(isec);
+
+            if(item == null) {
+                item = createDefaultItem(this);
+            } else {
+
+                CompoundTag display = new CompoundTag();
+                display.putString("Name", Component.Serializer.toJson(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(name))));
+                display.put("List", cmp);
+
+                item.getOrCreateTag().put("display", display);
+            }
+        } else {
+            item = createDefaultItem(this);
         }
 
         for(PositionType type : PositionType.values()) {
@@ -68,4 +104,25 @@ public class Map extends AbstractMap {
 
         return out;
     }
+
+    private static ItemStack createDefaultItem(AbstractMap map) {
+
+        List<Component> cmp = new ArrayList<>();
+        for(String s : map.getDescription()) {
+            cmp.add(TextUtil.parse(s));
+        }
+
+        return ItemBuilder.of(Items.WHITE_WOOL).withName(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(map.getName()))).withLore(cmp).build();
+    }
+
+    public static ItemStack getDisplayStack(AbstractMap map) {
+
+        if(!(map instanceof Map)) {
+            return createDefaultItem(map);
+        }
+
+        Map m = (Map) map;
+        return m.item.copy();
+    }
+
 }

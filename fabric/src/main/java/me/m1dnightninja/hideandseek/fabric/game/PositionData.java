@@ -1,6 +1,8 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.game.AbstractPositionData;
+import me.m1dnightninja.hideandseek.api.game.PositionType;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.fabric.util.TextUtil;

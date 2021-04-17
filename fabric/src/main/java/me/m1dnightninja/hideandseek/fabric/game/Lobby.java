@@ -1,7 +1,8 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.fabric.util.ParseUtil;
-import me.m1dnightninja.hideandseek.api.AbstractLobby;
+import me.m1dnightninja.hideandseek.api.game.AbstractLobby;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.api.module.ILangModule;
@@ -17,6 +18,7 @@ import net.minecraft.network.chat.TextComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.List;
 import java.util.UUID;
 
 public class Lobby extends AbstractLobby {
@@ -43,8 +45,8 @@ public class Lobby extends AbstractLobby {
 
     @Override
     public boolean canAccess(UUID u) {
-        // TODO: perms
-        return true;
+
+        return permission == null || MidnightCoreAPI.getInstance().hasPermission(u, permission);
     }
 
     public ItemStack getDisplayStack() {
@@ -96,12 +98,17 @@ public class Lobby extends AbstractLobby {
 
         CompoundTag display = new CompoundTag();
 
-        MutableComponent base = new TextComponent("").setStyle(Style.EMPTY.withItalic(false));
-        display.put("Name", StringTag.valueOf(Component.Serializer.toJson(base.plainCopy().append(TextUtil.parse(lobby.getName())))));
+        MutableComponent base = new TextComponent("").setStyle(Style.EMPTY.withItalic(Boolean.FALSE));
+
+        display.put("Name", StringTag.valueOf(Component.Serializer.toJson(base.copy().append(TextUtil.parse(lobby.getName())))));
 
         ListTag lore = new ListTag();
-        for(String s : lobby.getDescription().split("\n")) {
-            lore.add(StringTag.valueOf(Component.Serializer.toJson(base.plainCopy().append(TextUtil.parse(s)))));
+        List<String> desc = lobby.getDescription();
+
+        if(desc != null) {
+            for (String s : desc){
+                lore.add(StringTag.valueOf(Component.Serializer.toJson(base.copy().append(TextUtil.parse(s)))));
+            }
         }
 
         display.put("Lore", lore);

@@ -1,6 +1,6 @@
 package me.m1dnightninja.hideandseek.common;
 
-import me.m1dnightninja.hideandseek.api.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import org.apache.commons.io.FileUtils;
 

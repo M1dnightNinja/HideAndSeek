@@ -1,6 +1,9 @@
-package me.m1dnightninja.hideandseek.fabric;
+package me.m1dnightninja.hideandseek.fabric.game;
 
-import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.game.AbstractLobby;
+import me.m1dnightninja.hideandseek.api.game.AbstractLobbySession;
+import me.m1dnightninja.hideandseek.api.game.DamageSource;
+import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ILangModule;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
@@ -125,20 +128,6 @@ public class LobbySession extends AbstractLobbySession {
             if(pl == null) continue;
             pl.sendMessage(TextUtil.parse(message), ChatType.SYSTEM, Util.NIL_UUID);
         }
-    }
-
-    @Override
-    public void doGameStart(UUID player, AbstractMap map) {
-        GameType type = lobby.getGameType();
-
-        if(type == null) {
-            shutdown();
-            return;
-        }
-
-        runningInstance = type.create(this, player, map);
-        runningInstance.addCallback(this::shutdown);
-        runningInstance.start();
     }
 
     public void broadcastRawMessage(Component cmp) {

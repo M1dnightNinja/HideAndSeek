@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
 
@@ -11,7 +12,7 @@ public abstract class AbstractSession {
 
     private final UUID sessionId = UUID.randomUUID();
 
-    private final List<UUID> players = new ArrayList<>();
+    protected final List<UUID> players = new ArrayList<>();
     private final List<SessionCallback> callbacks = new ArrayList<>();
 
     private boolean shutdown = false;
@@ -105,7 +106,7 @@ public abstract class AbstractSession {
 
     protected abstract void onShutdown();
 
-    protected abstract void onTick();
+    public abstract void onTick();
     public abstract void onDamaged(UUID u, UUID damager, DamageSource src, float amount);
 
     public interface SessionCallback {

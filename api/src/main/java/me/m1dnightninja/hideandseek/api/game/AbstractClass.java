@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 
 import java.util.*;
@@ -7,6 +8,9 @@ import java.util.*;
 public abstract class AbstractClass {
 
     protected final String id;
+    protected String name;
+
+    protected final List<String> desc = new ArrayList<>();
 
     protected final List<SkinOption> skins = new ArrayList<>();
 
@@ -17,11 +21,20 @@ public abstract class AbstractClass {
 
     public AbstractClass(String id) {
         this.id = id;
+        this.name = id;
     }
 
 
     public String getId() {
         return id;
+    }
+
+    public List<String> getDescription() {
+        return desc;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public List<SkinOption> getSkins() {
@@ -51,6 +64,14 @@ public abstract class AbstractClass {
         skins.clear();
         tempEquivalencies.clear();
         equivalencies.clear();
+
+        if(sec.has("name")) {
+            name = sec.getString("name");
+        }
+
+        if(sec.has("description", List.class)) {
+            desc.addAll(sec.getStringList("description"));
+        }
 
         if(sec.has("skins", List.class)) {
             for(Object o : sec.get("skins", List.class)) {

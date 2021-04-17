@@ -1,4 +1,4 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
 import java.util.UUID;
 

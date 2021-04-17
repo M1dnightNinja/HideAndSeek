@@ -1,5 +1,6 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
@@ -14,7 +15,9 @@ public abstract class AbstractLobby {
     protected final Vec3d location;
 
     protected String name;
-    protected String description;
+    protected List<String> description;
+
+    protected String permission;
 
     protected int minPlayers = 2;
     protected int maxPlayers = 16;
@@ -49,7 +52,7 @@ public abstract class AbstractLobby {
         return name;
     }
 
-    public String getDescription() {
+    public List<String> getDescription() {
         return description;
     }
 
@@ -85,8 +88,12 @@ public abstract class AbstractLobby {
             name = sec.getString("name");
         }
 
-        if(sec.has("description", String.class)) {
-            description = sec.getString("description");
+        if(sec.has("description", List.class)) {
+            description = sec.getStringList("description");
+        }
+
+        if(sec.has("permission", String.class)) {
+            permission = sec.getString("permission");
         }
 
         if(sec.has("min_players", Number.class)) {

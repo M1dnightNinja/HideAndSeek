@@ -1,4 +1,4 @@
-package me.m1dnightninja.hideandseek.api;
+package me.m1dnightninja.hideandseek.api.game;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +13,7 @@ public abstract class AbstractGameInstance extends AbstractSession {
 
     public AbstractGameInstance(AbstractLobbySession lobby) {
         this.lobby = lobby;
+        players.addAll(lobby.getPlayerIds());
     }
 
     public PositionType getPosition(UUID u) {

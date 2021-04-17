@@ -11,7 +11,11 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'maven-publish'
 
+
     project.ext.archiveName = "hideandseek"
+    project.ext.modid = "hideandseek"
+    project.ext.modclass = "HideAndSeek"
+    project.ext.modname = "HideAndSeek"
     project.ext.minecraftVersion = "1.16.5"
 
     project.ext.majorVersion = '1'
@@ -22,40 +26,31 @@ subprojects {
     project.ext.fullVersion = project.ext.apiVersion + '.' + project.ext.patchVersion
 
 
-    group = 'me.m1dnightninja.hideandseek'
+    group = "me.m1dnightninja.${project.ext.archiveName}"
     version = project.ext.fullVersion
 
 
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+
 
     tasks.withType(JavaCompile) {
-        options.encoding = 'UTF-8'
-
+        options.encoding("UTF-8")
     }
 
     task sourcesJar(type: Jar, dependsOn: classes) {
-        classifier = "sources"
+        classifier("sources")
         from sourceSets.main.allSource
     }
 
     jar {
-        from "../LISENCE"
+        from "LISENCE"
     }
 
     repositories {
-        mavenLocal()
+        mavenCentral()
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
         maven { url 'https://mdmc.ddns.net/maven' }
     }
 
-    dependencies {
-        compile "me.m1dnightninja.midnightcore:api:1.0.0"
-    }
-
-}
-
-repositories {
-    mavenCentral()
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
-    maven { url 'https://mdmc.ddns.net/maven' }
 }

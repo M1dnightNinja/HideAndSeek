@@ -8,6 +8,7 @@ import java.util.UUID;
 
 @Mixin(ClientboundAddPlayerPacket.class)
 public interface AccessorPlayerSpawnPacket {
+
     @Accessor
     UUID getPlayerId();
 }

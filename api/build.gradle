@@ -1,7 +1,12 @@
 repositories {
-    mavenCentral()
     mavenLocal()
 }
+
+dependencies {
+    compileOnly("me.m1dnightninja.midnightcore:api:1.0.0")
+    compileOnly("me.m1dnightninja.skinsetter:api:1.0.0")
+}
+
 
 artifacts {
     jar
@@ -11,12 +16,22 @@ artifacts {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifact(jar)
-            artifact(sourcesJar)
+            artifacts {
+                jar
+                sourcesJar
+            }
         }
     }
 
     repositories {
-        mavenLocal()
+        maven {
+            if (project.hasProperty("pubUrl")) {
+                url = project.pubUrl as String
+                credentials {
+                    username project.pubUser as String
+                    password project.pubPass as String
+                }
+            }
+        }
     }
 }

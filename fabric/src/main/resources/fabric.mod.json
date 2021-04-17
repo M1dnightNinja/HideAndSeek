@@ -12,7 +12,7 @@
   "icon": "assets/hideandseek/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": [
+    "midnightcore:mod": [
       "me.m1dnightninja.hideandseek.fabric.HideAndSeek"
     ]
   },
@@ -20,9 +20,9 @@
     "hideandseek.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.10.6+build.214",
+    "fabricloader": ">=0.11.2",
     "fabric": "*",
     "minecraft": "1.16.x",
-    "midnightcore": "1.0.x"
+    "midnightcore": ">=1.0.0"
   }
 }

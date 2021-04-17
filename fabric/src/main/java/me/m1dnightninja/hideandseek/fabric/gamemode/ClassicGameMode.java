@@ -1,11 +1,12 @@
 package me.m1dnightninja.hideandseek.fabric.gamemode;
 
 import me.m1dnightninja.hideandseek.api.*;
-import me.m1dnightninja.hideandseek.api.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.*;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
-import me.m1dnightninja.hideandseek.fabric.MapInstance;
-import me.m1dnightninja.hideandseek.fabric.PositionData;
+import me.m1dnightninja.hideandseek.fabric.game.MapInstance;
+import me.m1dnightninja.hideandseek.fabric.game.PositionData;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
@@ -14,6 +15,7 @@ import me.m1dnightninja.midnightcore.api.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.CustomScoreboard;
+import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
@@ -96,7 +98,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
         for(CustomScoreboard sb : scoreboards.values()) {
 
-            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Seeking").setStyle(Style.EMPTY.withColor(ChatFormatting.RED))));
+            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.seeking", map.getData(PositionType.SEEKER))));
             sb.update();
 
         }
@@ -104,7 +106,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void onTick() {
+    public void onTick() {
         if(state == ClassicGameState.UNINITIALIZED) return;
 
         for(Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
@@ -123,7 +125,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             for(Region reg : map.getRegions()) {
                 if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
 
-                    player.sendMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent("deny_region_entry", player, reg),  ChatType.SYSTEM, Util.NIL_UUID);
+                    player.sendMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("deny_region_entry", ent.getValue()), player, reg),  ChatType.SYSTEM, Util.NIL_UUID);
 
                     toTeleport.add(ent.getKey());
                 }
@@ -280,7 +282,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         super.endGame(winner);
 
         for(CustomScoreboard sb : scoreboards.values()) {
-            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Ended").setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW))));
+            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.ended")));
             sb.update();
         }
     }
@@ -302,19 +304,14 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             }
             hidden.put(u, pls);
 
-            //subtitle = new TextComponent("Find the ").append(((PositionData) map.getData(PositionType.HIDER)).getRawPluralName());
             subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.MAIN_SEEKER), map.getData(PositionType.HIDER));
-
             currentMap.getSeekerSpawn().teleport(player);
 
         } else {
             setPosition(u, PositionType.HIDER);
 
-            //subtitle = new TextComponent("Hide from ").append(((PositionData) map.getData(PositionType.MAIN_SEEKER)).getRawProperName());
             subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.HIDER), map.getData(PositionType.MAIN_SEEKER));
-
             currentMap.getHiderSpawn().teleport(player);
-
             hidden.put(u, new ArrayList<>());
         }
 
@@ -325,7 +322,11 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         if (clazz != null) {
             clazz.applyToPlayer(u, null);
             classes.put(u, clazz);
+        } else {
+            HideAndSeekAPI.getLogger().warn("clazz is null!");
         }
+
+        currentMap.onJoin(player);
 
         ClientboundSetTitlesPacket tp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20);
         ClientboundSetTitlesPacket sp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.SUBTITLE, subtitle, 12, 80, 20);
@@ -340,12 +341,12 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             CustomScoreboard sb = new CustomScoreboard(RandomStringUtils.random(15, true, true), new TextComponent("HideAndSeek").setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW).withBold(true)));
 
             sb.setLine(7, new TextComponent("                         "));
-            sb.setLine(6, new TextComponent("Phase: ").append(new TextComponent("Hiding").setStyle(Style.EMPTY.withColor(ChatFormatting.BLUE))));
+            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.hiding", map.getData(PositionType.HIDER))));
             sb.setLine(5, new TextComponent("                         "));
             sb.setLine(4, new TextComponent("Role: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
             sb.setLine(3, new TextComponent("Map: ").append(TextUtil.parse(map.getName())));
             sb.setLine(2, new TextComponent("                         "));
-            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().plainCopy().append(new TextComponent(": ").append(new TextComponent(getPlayerCount() - 1 + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
+            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().copy().setStyle(Style.EMPTY).append(new TextComponent(": ").append(new TextComponent(getPlayerCount() - 1 + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
 
             sb.addPlayer(player);
 
@@ -357,15 +358,17 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
     @Override
     protected void onPlayerRemoved(UUID u) {
-        super.onPlayerRemoved(u);
 
         ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        if(pl == null) return;
+        if(pl != null) {
 
-        currentMap.removeFromTeam(pl.getGameProfile().getName());
-        currentMap.removeTeams(pl);
+            currentMap.onLeave(pl);
+            currentMap.removeFromTeam(pl.getGameProfile().getName());
 
-        scoreboards.get(u).removePlayer(pl);
+            scoreboards.get(u).removePlayer(pl);
+        }
+
+        super.onPlayerRemoved(u);
 
     }
 
@@ -430,7 +433,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         super.checkVictory();
 
         for(CustomScoreboard sb : scoreboards.values()) {
-            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().plainCopy().append(new TextComponent(": ").append(new TextComponent(countPosition(PositionType.HIDER) + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
+            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().copy().setStyle(Style.EMPTY).append(new TextComponent(": ").append(new TextComponent(countPosition(PositionType.HIDER) + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
             sb.update();
         }
     }
