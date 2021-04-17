@@ -12,8 +12,8 @@ dependencies {
     implementation('com.mojang:authlib:2.1.28')
     implementation('com.google.code.gson:gson:2.8.0')
 
-    implementation("me.m1dnightninja.midnightcore:api:1.0.0")
-    implementation("me.m1dnightninja.midnightcore:common:1.0.0")
+    implementation("me.m1dnightninja.midnightcore:api:1.0-latest")
+    implementation("me.m1dnightninja.midnightcore:common:1.0-latest")
 
     compile project(":api")
 }
@@ -26,10 +26,8 @@ artifacts {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifacts {
-                jar
-                sourcesJar
-            }
+            artifact(jar)
+            artifact(sourcesJar)
         }
     }
 

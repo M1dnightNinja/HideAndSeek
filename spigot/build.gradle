@@ -26,9 +26,9 @@ dependencies {
 
     compileOnly("org.spigotmc:spigot:${project.ext.minecraftVersion}-R0.1-SNAPSHOT")
 
-    compileOnly("me.m1dnightninja.midnightcore:api:1.0.0")
-    compileOnly("me.m1dnightninja.midnightcore:common:1.0.0")
-    compileOnly("me.m1dnightninja.midnightcore:spigot:1.0.0")
+    compileOnly("me.m1dnightninja.midnightcore:api:1.0-latest")
+    compileOnly("me.m1dnightninja.midnightcore:common:1.0-latest")
+    compileOnly("me.m1dnightninja.midnightcore:spigot:1.0-latest")
 
     shade(project(":api"))
     shade(project(":common"))
@@ -77,10 +77,8 @@ artifacts {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifacts {
-                jar
-                sourcesJar
-            }
+            artifact(jar)
+            artifact(sourcesJar)
         }
     }
     repositories {

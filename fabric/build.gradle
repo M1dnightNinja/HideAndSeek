@@ -7,6 +7,7 @@ plugins {
 
 repositories {
     maven { url 'https://maven.fabricmc.net/' }
+    mavenLocal()
 }
 
 configurations {
@@ -21,9 +22,9 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:0.11.3")
     modImplementation("net.fabricmc.fabric-api:fabric-api:0.32.5+1.16")
 
-    modImplementation("me.m1dnightninja.midnightcore:api:1.0.0")
-    modImplementation("me.m1dnightninja.midnightcore:common:1.0.0")
-    modImplementation("me.m1dnightninja.midnightcore:fabric:1.0.0") {
+    modImplementation("me.m1dnightninja.midnightcore:api:1.0-latest")
+    modImplementation("me.m1dnightninja.midnightcore:common:1.0-latest")
+    modImplementation("me.m1dnightninja.midnightcore:fabric:1.0-latest") {
         transitive = false
     }
 
@@ -84,9 +85,11 @@ artifacts {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifacts {
-                remapJar
-                remapSourcesJar
+            artifact(remapJar) {
+                builtBy remapJar
+            }
+            artifact(sourcesJar) {
+                builtBy remapSourcesJar
             }
         }
     }

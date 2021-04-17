@@ -3,8 +3,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("me.m1dnightninja.midnightcore:api:1.0.0")
-    compileOnly("me.m1dnightninja.skinsetter:api:1.0.0")
+    compileOnly("me.m1dnightninja.midnightcore:api:1.0-latest")
+    compileOnly("me.m1dnightninja.skinsetter:api:1.0-latest")
 }
 
 
@@ -16,10 +16,8 @@ artifacts {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifacts {
-                jar
-                sourcesJar
-            }
+            artifact(jar)
+            artifact(sourcesJar)
         }
     }
 
