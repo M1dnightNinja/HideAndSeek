@@ -3,18 +3,32 @@ package me.m1dnightninja.hideandseek.api.game;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
+import me.m1dnightninja.midnightcore.api.math.Color;
+import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
 
 import java.util.UUID;
 
 public abstract class AbstractLobbySession extends AbstractSession {
 
-    protected final AbstractLobby lobby;
+    protected final Lobby lobby;
     protected AbstractGameInstance runningInstance;
 
     private AbstractTimer startTimer;
+    private final AbstractCustomScoreboard scoreboard;
 
-    public AbstractLobbySession(AbstractLobby lobby) {
+    public AbstractLobbySession(Lobby lobby) {
         this.lobby = lobby;
+
+        scoreboard = MidnightCoreAPI.getInstance().createScoreboard(AbstractCustomScoreboard.generateRandomId(), MComponent.createTextComponent("HideAndSeek").withStyle(new MStyle().withColor(Color.fromRGBI(14)).withBold(true)));
+
+        scoreboard.setLine(5, MComponent.createTextComponent("                         "));
+        scoreboard.setLine(4, MComponent.createTextComponent("Lobby: ").addChild(lobby.getName()));
+        scoreboard.setLine(3, MComponent.createTextComponent("Game Mode: ").addChild(lobby.getGameType().getName()));
+        scoreboard.setLine(2, MComponent.createTextComponent("                         "));
+        scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
+
     }
 
     @Override
@@ -29,7 +43,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
             if (getPlayerCount() == lobby.getMinPlayers()) {
 
-                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", this, lobby), 180, false, secondsLeft -> {
+                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", (UUID) null, this, lobby), 180, false, secondsLeft -> {
                     if(secondsLeft == 0) {
                         if(isRunning()) return;
                         startGame(null, null);
@@ -43,6 +57,14 @@ public abstract class AbstractLobbySession extends AbstractSession {
         } else {
             startTimer.addPlayer(u);
         }
+
+        broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.join", (UUID) null, this, u));
+
+        scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
+        scoreboard.update();
+
+        scoreboard.addPlayer(u);
+
     }
 
     public void startGame(UUID seeker, AbstractMap map) {
@@ -62,7 +84,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
         runningInstance.start();
     }
 
-    public AbstractLobby getLobby() {
+    public Lobby getLobby() {
         return lobby;
     }
 
@@ -86,6 +108,12 @@ public abstract class AbstractLobbySession extends AbstractSession {
             startTimer.cancel();
             startTimer = null;
         }
+
+        scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
+        scoreboard.update();
+        scoreboard.removePlayer(u);
+        if(!isShutdown()) broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.leave", (UUID) null, this, u));
+
     }
 
     @Override
@@ -96,8 +124,6 @@ public abstract class AbstractLobbySession extends AbstractSession {
     public AbstractGameInstance getRunningGame() {
         return runningInstance;
     }
-
-    public abstract void broadcastMessage(String msg);
 
     public boolean isRunning() {
         return runningInstance != null && !runningInstance.isShutdown();

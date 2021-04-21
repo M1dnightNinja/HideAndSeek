@@ -2,15 +2,19 @@ package me.m1dnightninja.hideandseek.common;
 
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.*;
+import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
-import me.m1dnightninja.midnightcore.api.lang.AbstractLangProvider;
+import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
+import me.m1dnightninja.midnightcore.api.text.AbstractTitle;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
+import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
+import org.apache.commons.lang3.RandomStringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
@@ -21,6 +25,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
     protected final List<UUID> toTeleport = new ArrayList<>();
     protected final HashMap<UUID, Vec3d> locations = new HashMap<>();
+    protected final HashMap<UUID, AbstractCustomScoreboard> scoreboards = new HashMap<>();
 
     private final List<AbstractTimer> timers = new ArrayList<>();
 
@@ -54,6 +59,37 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         for(UUID u : getPlayerIds()) {
             try {
                 setupPlayer(u);
+
+                AbstractTitle title = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_title", u, positions.get(u)), u, map.getData(positions.get(u))), AbstractTitle.TITLE);
+                AbstractTitle subtitle;
+
+                if(positions.get(u).isSeeker()) {
+
+                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.MAIN_SEEKER), u, map.getData(PositionType.HIDER)), AbstractTitle.SUBTITLE);
+
+                } else {
+
+                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.HIDER), u, map.getData(PositionType.MAIN_SEEKER)), AbstractTitle.SUBTITLE);
+
+                }
+
+                title.sendToPlayer(u);
+                subtitle.sendToPlayer(u);
+
+                AbstractCustomScoreboard sb = MidnightCoreAPI.getInstance().createScoreboard(RandomStringUtils.random(15, true, true), MComponent.createTextComponent("HideAndSeek").withStyle(new MStyle().withColor(Color.fromRGBI(14)).withBold(true)));
+
+                sb.setLine(7, MComponent.createTextComponent("                         "));
+                sb.setLine(6, MComponent.createTextComponent("Phase: ").addChild(HideAndSeekAPI.getInstance().getLangProvider().getMessage("phase.hiding", u, map.getData(PositionType.HIDER))));
+                sb.setLine(5, MComponent.createTextComponent("                         "));
+                sb.setLine(4, MComponent.createTextComponent("Role: ").addChild(map.getData(positions.get(u)).getName()));
+                sb.setLine(3, MComponent.createTextComponent("Map: ").addChild(map.getName()));
+                sb.setLine(2, MComponent.createTextComponent("                         "));
+                sb.setLine(1, map.getData(PositionType.HIDER).getPluralName().copy().withStyle(new MStyle()).addChild(MComponent.createTextComponent(": ").addChild(MComponent.createTextComponent(getPlayerCount() - 1 + "").withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))));
+
+                sb.addPlayer(u);
+
+                scoreboards.put(u, sb);
+
             } catch (Throwable th) {
                 th.printStackTrace();
                 shutdown();
@@ -61,7 +97,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             }
         }
 
-        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null), this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, timeLeft -> {
+        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null,null), (UUID) null, this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, timeLeft -> {
             if(timeLeft > 0 && timeLeft < 6) {
                 playTickSound();
             } else if(timeLeft == 0) {
@@ -84,7 +120,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         state = ClassicGameState.SEEKING;
         cancelTimers();
 
-        hiderTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", PositionType.HIDER), this, lobby, map.getData(PositionType.HIDER)), map.getSeekTime(), false, timeLeft -> {
+        hiderTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", null, PositionType.HIDER), (UUID) null, this, lobby, map.getData(PositionType.HIDER)), map.getSeekTime(), false, timeLeft -> {
             if(timeLeft > 0 && timeLeft < 6) {
                 playTickSound();
             } else if(timeLeft == 0) {
@@ -92,8 +128,8 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             }
         });
 
-        seekerTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", PositionType.SEEKER), this, lobby, map.getData(PositionType.SEEKER)), map.getSeekTime(), false, null);
-        AbstractTimer mainSeekerTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", PositionType.MAIN_SEEKER), this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getSeekTime(), false, null);
+        seekerTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", null, PositionType.SEEKER), (UUID) null, this, lobby, map.getData(PositionType.SEEKER)), map.getSeekTime(), false, null);
+        AbstractTimer mainSeekerTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("seek_timer", null, PositionType.MAIN_SEEKER), (UUID) null, this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getSeekTime(), false, null);
 
         for(UUID u : getPlayerIds()) {
             switch(getPosition(u)) {
@@ -116,6 +152,13 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         seekerTimer.start();
         mainSeekerTimer.start();
 
+        for(Map.Entry<UUID,AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
+
+            AbstractCustomScoreboard sb = ent.getValue();
+
+            sb.setLine(6, MComponent.createTextComponent("Phase: ").addChild(HideAndSeekAPI.getInstance().getLangProvider().getMessage("phase.seeking", ent.getKey(), map.getData(PositionType.SEEKER))));
+            sb.update();
+        }
     }
 
     @Override
@@ -152,6 +195,11 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     @Override
     protected void onShutdown() {
         cancelTimers();
+
+        for(AbstractCustomScoreboard cs : scoreboards.values()) {
+            cs.clearPlayers();
+        }
+
         unloadWorld();
     }
 
@@ -162,9 +210,20 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
         cancelTimers();
 
-        broadcastVictoryTitle(winner);
+        for(UUID u : players) {
+            if (winner == null) {
+                HideAndSeekAPI.getInstance().getLangProvider().sendTitle(getKey("end_title_draw", u, null), u, AbstractTitle.TITLE);
+            } else {
+                if (winner.isSeeker() == positions.get(u).isSeeker()) {
+                    HideAndSeekAPI.getInstance().getLangProvider().sendTitle(getKey("end_title_win", u, winner), u, AbstractTitle.TITLE, map.getData(winner));
+                } else {
+                    HideAndSeekAPI.getInstance().getLangProvider().sendTitle(getKey("end_title_lose", u, winner), u, AbstractTitle.TITLE,  map.getData(winner));
+                }
+            }
+        }
+        broadcastVictorySound(winner);
 
-        String s = HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("end_timer", null), this, lobby, lobby.getLobby());
+        MComponent s = HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("end_timer", null,null), (UUID) null, this, lobby, lobby.getLobby());
 
         AbstractTimer endTimer = MidnightCoreAPI.getInstance().createTimer(s, 15, false, secondsLeft -> {
             if(secondsLeft == 0) shutdown();
@@ -176,6 +235,14 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
         timers.add(endTimer);
         endTimer.start();
+
+        for(Map.Entry<UUID, AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
+
+            AbstractCustomScoreboard sb = ent.getValue();
+
+            sb.setLine(6, MComponent.createTextComponent("Phase: ").addChild(HideAndSeekAPI.getInstance().getLangProvider().getMessage("phase.ended", ent.getKey())));
+            sb.update();
+        }
     }
 
     @Override
@@ -205,6 +272,11 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             endGame(PositionType.HIDER);
         }
 
+        for(AbstractCustomScoreboard sb : scoreboards.values()) {
+            sb.setLine(1, map.getData(PositionType.HIDER).getName().copy().withStyle(new MStyle()).addChild(MComponent.createTextComponent(": ").addChild(MComponent.createTextComponent(countPosition(PositionType.HIDER) + "").withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))));
+            sb.update();
+        }
+
     }
 
     private void cancelTimers() {
@@ -223,7 +295,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     protected abstract void broadcastTagMessage(UUID tagged, UUID tagger, DamageSource src);
 
     protected abstract void setupPlayer(UUID u);
-    protected abstract void broadcastVictoryTitle(PositionType winner);
+    protected abstract void broadcastVictorySound(PositionType winner);
 
     protected void setPlayerSeeker(UUID player) {
 
@@ -231,31 +303,39 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         hiderTimer.removePlayer(player);
         seekerTimer.addPlayer(player);
 
+        scoreboards.get(player).setLine(4, MComponent.createTextComponent("Role: ").addChild(map.getData(positions.get(player)).getName()));
+
         checkVictory();
     }
 
-    protected String getKey(String key, PositionType optional) {
+    protected String getKey(String key, UUID player, PositionType optional) {
 
-        AbstractLangProvider prov = HideAndSeekAPI.getInstance().getLangProvider();
+        // Kinda cringe logic to get cascading messages
+
+        ILangProvider prov = HideAndSeekAPI.getInstance().getLangProvider();
 
         String out;
         if(optional == null) {
 
-            if(prov.hasMessage((out = lobby.getLobby().getGameType().getId() + "." + key))) {
+            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
                 return out;
             }
 
         } else {
 
-            if(prov.hasMessage((out = lobby.getLobby().getGameType().getId() + "." + key + "." + optional.getId()))) {
+            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + optional.getId()), player)) {
                 return out;
-            } else if(prov.hasMessage((out = lobby.getLobby().getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")))) {
+
+            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
                 return out;
-            } else if(prov.hasMessage((out = lobby.getLobby().getGameType().getId() + "." + key))) {
+
+            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
                 return out;
-            } else if(prov.hasMessage((out = "game." + key + "." + optional.getId()))) {
+
+            } else if(prov.hasKey((out = "game." + key + "." + optional.getId()), player)) {
                 return out;
-            } else if(prov.hasMessage((out = "game." + key + "." + (optional.isSeeker() ? "seeker" : "hider")))) {
+
+            } else if(prov.hasKey((out = "game." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
                 return out;
             }
         }
@@ -263,6 +343,13 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         return "game." + key;
     }
 
+    @Override
+    protected void onPlayerRemoved(UUID u) {
+
+        scoreboards.get(u).removePlayer(u);
+
+        super.onPlayerRemoved(u);
+    }
 
     public enum ClassicGameState {
         UNINITIALIZED,

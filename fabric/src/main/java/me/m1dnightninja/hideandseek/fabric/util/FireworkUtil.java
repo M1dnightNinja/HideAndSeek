@@ -1,7 +1,7 @@
 package me.m1dnightninja.hideandseek.fabric.util;
 
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorFireworkRocketEntity;
-import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;

@@ -1,7 +1,7 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
-import me.m1dnightninja.midnightcore.api.skin.Skin;
+import me.m1dnightninja.midnightcore.api.module.skin.Skin;
 
 import java.util.UUID;
 

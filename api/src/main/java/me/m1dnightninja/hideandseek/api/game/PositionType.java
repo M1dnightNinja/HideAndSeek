@@ -1,6 +1,7 @@
 package me.m1dnightninja.hideandseek.api.game;
 
-import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.math.Color;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 public enum PositionType {
 
@@ -10,13 +11,13 @@ public enum PositionType {
     MAIN_SEEKER("main_seeker", "Main Seeker", true, new Color("d12828"));
 
     String id;
-    String name;
+    MComponent name;
     boolean seeker;
     Color defaultColor;
 
     PositionType(String id, String name, boolean seeker, Color defaultColor) {
         this.id = id;
-        this.name = name;
+        this.name = MComponent.createTextComponent(name);
         this.seeker = seeker;
         this.defaultColor = defaultColor;
     }
@@ -32,7 +33,7 @@ public enum PositionType {
         return id;
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 

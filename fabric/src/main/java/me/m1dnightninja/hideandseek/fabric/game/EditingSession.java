@@ -6,7 +6,12 @@ import me.m1dnightninja.hideandseek.api.game.DamageSource;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.fabric.util.ConversionUtil;
+import net.minecraft.Util;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
@@ -68,6 +73,19 @@ public class EditingSession extends AbstractSession {
             ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
             instance.onLeave(player);
         }
+    }
+
+    @Override
+    protected void broadcastMessage(MComponent comp) {
+        Component send = ConversionUtil.toMinecraftComponent(comp);
+
+        for(UUID u : players) {
+            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(pl == null) continue;
+
+            pl.sendMessage(send, ChatType.SYSTEM, Util.NIL_UUID);
+        }
+
     }
 
     @Override

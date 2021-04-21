@@ -1,21 +1,27 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
+import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
+import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public abstract class AbstractLobby {
+public class Lobby {
 
     protected final String id;
     protected final Vec3d location;
 
-    protected String name;
-    protected List<String> description;
+    protected MItemStack displayStack;
+
+    protected MComponent name;
+    protected List<MComponent> description;
 
     protected String permission;
 
@@ -30,9 +36,9 @@ public abstract class AbstractLobby {
 
     protected final List<AbstractMap> maps = new ArrayList<>();
 
-    public AbstractLobby(String id, Vec3d location) {
+    public Lobby(String id, Vec3d location) {
         this.id = id;
-        this.name = id;
+        this.name = MComponent.createTextComponent(id);
         this.location = location;
     }
 
@@ -48,11 +54,11 @@ public abstract class AbstractLobby {
         return maxPlayers;
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 
-    public List<String> getDescription() {
+    public List<MComponent> getDescription() {
         return description;
     }
 
@@ -80,16 +86,30 @@ public abstract class AbstractLobby {
         return maps;
     }
 
-    public abstract boolean canAccess(UUID u);
+    public MItemStack getDisplayStack() {
+        return displayStack;
+    }
+
+    public String getPermission() {
+        return permission;
+    }
+
+    public boolean canAccess(UUID u) {
+
+        return permission == null || MidnightCoreAPI.getInstance().hasPermission(u, permission);
+    }
 
     public void fromConfig(ConfigSection sec) {
 
         if(sec.has("name", String.class)) {
-            name = sec.getString("name");
+            name = MComponent.Serializer.parse(sec.getString("name"));
         }
 
         if(sec.has("description", List.class)) {
-            description = sec.getStringList("description");
+            for(String s : sec.getStringList("description")) {
+
+                description.add(MComponent.Serializer.parse(s));
+            }
         }
 
         if(sec.has("permission", String.class)) {
@@ -129,8 +149,36 @@ public abstract class AbstractLobby {
             }
         }
 
+        if(sec.has("item", MItemStack.class)) {
+            displayStack = sec.get("item", MItemStack.class);
 
+            ConfigSection tag = displayStack.getTag();
 
+            if(!tag.has("display")) {
+
+                ConfigSection display = new ConfigSection();
+                display.set("Name", MComponent.Serializer.toJsonString(MComponent.createTextComponent("").withStyle(MStyle.ITEM_BASE).addChild(name)));
+
+                List<String> strs = new ArrayList<>();
+                for(MComponent cmp : description) {
+                    strs.add(MComponent.Serializer.toJsonString(MComponent.createTextComponent("").withStyle(MStyle.ITEM_BASE).addChild(cmp)));
+                }
+
+                display.set("Lore", strs);
+                tag.set("display", display);
+            }
+        }
+    }
+
+    public static Lobby parse(ConfigSection sec) {
+
+        String id = sec.getString("id");
+        Vec3d location = Vec3d.parse(sec.getString("location"));
+
+        Lobby out = new Lobby(id, location);
+        out.fromConfig(sec);
+
+        return out;
     }
 
 }

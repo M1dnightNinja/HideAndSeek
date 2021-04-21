@@ -1,13 +1,15 @@
 package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+
 import java.util.UUID;
 
 public abstract class GameType {
 
     private final String id;
-    private final String name;
+    private final MComponent name;
 
-    public GameType(String id, String name) {
+    public GameType(String id, MComponent name) {
         this.id = id;
         this.name = name;
     }
@@ -18,7 +20,7 @@ public abstract class GameType {
         return id;
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 }

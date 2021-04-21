@@ -7,7 +7,7 @@ import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.IPlayerDataModule;
-import me.m1dnightninja.midnightcore.api.skin.Skin;
+import me.m1dnightninja.midnightcore.api.module.skin.Skin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import java.util.UUID;
 public class HideAndSeekRegistry {
 
     private final HashMap<String, AbstractMap> maps = new HashMap<>();
-    private final HashMap<String, AbstractLobby> lobbies = new HashMap<>();
+    private final HashMap<String, Lobby> lobbies = new HashMap<>();
     private final HashMap<String, AbstractClass> classes = new HashMap<>();
     private final HashMap<String, SkinOption> skins = new HashMap<>();
     private final HashMap<String, GameType> gameTypes = new HashMap<>();
@@ -48,7 +48,7 @@ public class HideAndSeekRegistry {
         maps.put(map.getId(), map);
     }
 
-    public void registerLobby(AbstractLobby lobby) {
+    public void registerLobby(Lobby lobby) {
         if(lobbies.containsKey(lobby.getId())) return;
         if(lobby.getMaps().size() == 0) return;
 
@@ -75,7 +75,7 @@ public class HideAndSeekRegistry {
         return maps.get(id);
     }
 
-    public AbstractLobby getLobby(String id) {
+    public Lobby getLobby(String id) {
         return lobbies.get(id);
     }
 
@@ -112,7 +112,7 @@ public class HideAndSeekRegistry {
         return new ArrayList<>(maps.values());
     }
 
-    public List<AbstractLobby> getLobbies() {
+    public List<Lobby> getLobbies() {
         return new ArrayList<>(lobbies.values());
     }
 
@@ -162,12 +162,12 @@ public class HideAndSeekRegistry {
     }
 
 
-    public List<AbstractLobby> getLobbies(UUID u) {
+    public List<Lobby> getLobbies(UUID u) {
 
         if(u == null) return getLobbies();
 
-        List<AbstractLobby> lbs = new ArrayList<>();
-        for(AbstractLobby l : lobbies.values()) {
+        List<Lobby> lbs = new ArrayList<>();
+        for(Lobby l : lobbies.values()) {
             if(l.canAccess(u)) lbs.add(l);
         }
 

@@ -6,38 +6,33 @@ import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.hideandseek.fabric.game.MapInstance;
-import me.m1dnightninja.hideandseek.fabric.game.PositionData;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
 import me.m1dnightninja.hideandseek.fabric.util.FireworkUtil;
-import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
-import me.m1dnightninja.midnightcore.fabric.api.CustomScoreboard;
-import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
-import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
-import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
-import net.minecraft.network.chat.*;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.FireworkRocketItem;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.*;
 
 public class ClassicGameMode extends AbstractClassicGameMode {
 
     private MapInstance currentMap;
-
-    private final HashMap<UUID, CustomScoreboard> scoreboards = new HashMap<>();
 
     private final HashMap<UUID, List<UUID>> hidden = new HashMap<>();
 
@@ -96,13 +91,6 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
         Event.unregisterAll(this);
 
-        for(CustomScoreboard sb : scoreboards.values()) {
-
-            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.seeking", map.getData(PositionType.SEEKER))));
-            sb.update();
-
-        }
-
     }
 
     @Override
@@ -125,8 +113,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             for(Region reg : map.getRegions()) {
                 if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
 
-                    player.sendMessage(HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("deny_region_entry", ent.getValue()), player, reg),  ChatType.SYSTEM, Util.NIL_UUID);
-
+                    HideAndSeek.getInstance().getLangProvider().sendMessage(getKey("deny_region_entry", player.getUUID(), ent.getValue()), player.getUUID(), player, reg);
                     toTeleport.add(ent.getKey());
                 }
             }
@@ -188,9 +175,6 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     @Override
     protected void unloadWorld() {
         currentMap.clearTeams();
-        for(CustomScoreboard cs : scoreboards.values()) {
-            cs.clearPlayers();
-        }
         HideAndSeek.getInstance().getDimensionManager().unloadMapWorld(map, lobby.getLobby().getId(), false);
     }
 
@@ -216,75 +200,60 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(tagged);
         if(pl == null) return;
 
-        MutableComponent bc;
+        MComponent bc;
 
         if(tagger != null) {
 
             ServerPlayer attacker = MidnightCore.getServer().getPlayerList().getPlayer(tagger);
             if(attacker == null) return;
 
-            bc = new TextComponent("")
-                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
-                    .append(" was tagged by ")
-                    .append(attacker.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.SEEKER).getColor().toHex()))))
-                    .append("! ")
-                    .append(getRemainsText());
+            bc = MComponent.createTextComponent("")
+                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
+                    .addChild(MComponent.createTextComponent(" was tagged by "))
+                    .addChild(MComponent.createTextComponent(attacker.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.SEEKER).getColor())))
+                    .addChild(MComponent.createTextComponent("! "))
+                    .addChild(getRemainsText());
 
         } else if(src != null) {
 
             net.minecraft.world.damagesource.DamageSource minecraft = ConversionUtil.convertDamageSource(src);
 
-            bc = new TextComponent("")
-                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
-                    .append(new TranslatableComponent("death.attack." + minecraft.msgId))
-                    .append("! ")
-                    .append(getRemainsText());
+            bc = MComponent.createTextComponent("")
+                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
+                    .addChild(MComponent.createTranslatableComponent("death.attack." + minecraft.msgId))
+                    .addChild(MComponent.createTextComponent("! "))
+                    .addChild(getRemainsText());
 
         } else {
 
-            bc = new TextComponent("")
-                    .append(pl.getName().plainCopy().withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex()))))
-                    .append(" was tagged! ")
-                    .append(getRemainsText());
+            bc = MComponent.createTextComponent("")
+                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
+                    .addChild(MComponent.createTextComponent(" was tagged! "))
+                    .addChild(getRemainsText());
 
         }
 
-        for(UUID u : getPlayerIds()) {
-
-            ServerPlayer op = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(op != null) op.sendMessage(bc, ChatType.SYSTEM, Util.NIL_UUID);
-
-        }
+        broadcastMessage(bc);
 
     }
 
-    private Component getRemainsText() {
+    private MComponent getRemainsText() {
         int hiders = 0;
         for(PositionType t : positions.values()) {
             if(t == PositionType.HIDER) hiders++;
         }
 
-        MutableComponent remain = new TextComponent(hiders + "").withStyle(Style.EMPTY.withColor(TextColor.parseColor(map.getData(PositionType.HIDER).getColor().toHex())));
-        remain.append(" ");
+        MComponent remain = MComponent.createTextComponent(hiders + "").withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor()));
+        remain.addChild(MComponent.createTextComponent(" "));
         if(hiders == 1) {
-            remain.append(TextUtil.parse(map.getData(PositionType.HIDER).getName()));
-            remain.append(" remains!");
+            remain.addChild(map.getData(PositionType.HIDER).getName());
+            remain.addChild(MComponent.createTextComponent(" remains!"));
         } else {
-            remain.append(TextUtil.parse(map.getData(PositionType.HIDER).getPluralName()));
-            remain.append(" remain!");
+            remain.addChild(map.getData(PositionType.HIDER).getPluralName());
+            remain.addChild(MComponent.createTextComponent(" remain!"));
         }
 
         return remain;
-    }
-
-    @Override
-    protected void endGame(PositionType winner) {
-        super.endGame(winner);
-
-        for(CustomScoreboard sb : scoreboards.values()) {
-            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.ended")));
-            sb.update();
-        }
     }
 
     @Override
@@ -293,7 +262,6 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
         if (player == null) return;
 
-        Component subtitle;
         if (u.equals(seeker)) {
             setPosition(u, PositionType.MAIN_SEEKER);
 
@@ -303,20 +271,14 @@ public class ClassicGameMode extends AbstractClassicGameMode {
                 pls.add(uu);
             }
             hidden.put(u, pls);
-
-            subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.MAIN_SEEKER), map.getData(PositionType.HIDER));
             currentMap.getSeekerSpawn().teleport(player);
 
         } else {
             setPosition(u, PositionType.HIDER);
 
-            subtitle = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_subtitle", PositionType.HIDER), map.getData(PositionType.MAIN_SEEKER));
             currentMap.getHiderSpawn().teleport(player);
             hidden.put(u, new ArrayList<>());
         }
-
-        Component title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("start_title", positions.get(u)), player, map.getData(positions.get(u)));
-
         AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(u, map, positions.get(u));
 
         if (clazz != null) {
@@ -327,33 +289,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         }
 
         currentMap.onJoin(player);
-
-        ClientboundSetTitlesPacket tp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20);
-        ClientboundSetTitlesPacket sp = new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.SUBTITLE, subtitle, 12, 80, 20);
-
-        player.connection.send(tp);
-        player.connection.send(sp);
-
         currentMap.addToTeam(player.getGameProfile().getName(), positions.get(u));
-
-        try {
-
-            CustomScoreboard sb = new CustomScoreboard(RandomStringUtils.random(15, true, true), new TextComponent("HideAndSeek").setStyle(Style.EMPTY.withColor(ChatFormatting.YELLOW).withBold(true)));
-
-            sb.setLine(7, new TextComponent("                         "));
-            sb.setLine(6, new TextComponent("Phase: ").append(((LangProvider) HideAndSeekAPI.getInstance().getLangProvider()).getMessageAsComponent("phase.hiding", map.getData(PositionType.HIDER))));
-            sb.setLine(5, new TextComponent("                         "));
-            sb.setLine(4, new TextComponent("Role: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
-            sb.setLine(3, new TextComponent("Map: ").append(TextUtil.parse(map.getName())));
-            sb.setLine(2, new TextComponent("                         "));
-            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().copy().setStyle(Style.EMPTY).append(new TextComponent(": ").append(new TextComponent(getPlayerCount() - 1 + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
-
-            sb.addPlayer(player);
-
-            scoreboards.put(u, sb);
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
     }
 
     @Override
@@ -364,8 +300,6 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
             currentMap.onLeave(pl);
             currentMap.removeFromTeam(pl.getGameProfile().getName());
-
-            scoreboards.get(u).removePlayer(pl);
         }
 
         super.onPlayerRemoved(u);
@@ -373,26 +307,29 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void broadcastVictoryTitle(PositionType winner) {
+    protected void broadcastMessage(MComponent comp) {
+
+        Component cmp = me.m1dnightninja.midnightcore.fabric.util.ConversionUtil.toMinecraftComponent(comp);
 
         for(UUID u : lobby.getPlayerIds()) {
 
             ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
             if(player == null) continue;
 
-            Component title;
-            if(winner == null) {
-                title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_draw", null));
-            } else {
-                if(winner.isSeeker() == positions.get(u).isSeeker()) {
-                    title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_win", winner), map.getData(winner));
-                } else {
-                    title = HideAndSeek.getInstance().getLangProvider().getMessageAsComponent(getKey("end_title_lose", winner), map.getData(winner));
-                }
-            }
+            player.sendMessage(cmp, ChatType.SYSTEM, Util.NIL_UUID);
+        }
+
+    }
+
+    @Override
+    protected void broadcastVictorySound(PositionType winner) {
+
+        for(UUID u : lobby.getPlayerIds()) {
+
+            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            if(player == null) continue;
 
             player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.HOSTILE, 1.0f, 1.3f);
-            player.connection.send(new ClientboundSetTitlesPacket(ClientboundSetTitlesPacket.Type.TITLE, title, 12, 80, 20));
         }
 
     }
@@ -425,16 +362,5 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         FireworkUtil.spawnFireworkExplosion(Collections.singletonList(map.getData(PositionType.SEEKER).getColor()), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.LARGE_BALL, loc);
         FireworkUtil.spawnFireworkExplosion(Collections.singletonList(new Color("FFFFFF")), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.SMALL_BALL, loc);
 
-        scoreboards.get(u).setLine(4, new TextComponent("Role: ").append(((PositionData) map.getData(positions.get(u))).getRawName()));
-    }
-
-    @Override
-    protected void checkVictory() {
-        super.checkVictory();
-
-        for(CustomScoreboard sb : scoreboards.values()) {
-            sb.setLine(1, ((PositionData) map.getData(PositionType.HIDER)).getRawPluralName().copy().setStyle(Style.EMPTY).append(new TextComponent(": ").append(new TextComponent(countPosition(PositionType.HIDER) + "").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(map.getData(PositionType.HIDER).getColor().toDecimal()))))));
-            sb.update();
-        }
     }
 }

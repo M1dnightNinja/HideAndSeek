@@ -8,15 +8,17 @@ import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.game.EditingSession;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
-import me.m1dnightninja.hideandseek.fabric.game.Lobby;
 import me.m1dnightninja.hideandseek.fabric.game.LobbySession;
 import me.m1dnightninja.hideandseek.fabric.game.Map;
 import me.m1dnightninja.midnightcore.api.AbstractInventoryGUI;
-import me.m1dnightninja.midnightcore.api.skin.Skin;
+import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
+import me.m1dnightninja.midnightcore.api.math.Color;
+import me.m1dnightninja.midnightcore.api.module.skin.Skin;
+import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
 import me.m1dnightninja.midnightcore.fabric.api.InventoryGUI;
 import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
-import me.m1dnightninja.midnightcore.fabric.util.ItemBuilder;
-import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -27,11 +29,6 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.animal.Parrot;
-import net.minecraft.world.entity.monster.Shulker;
-import net.minecraft.world.item.ChorusFruitItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.Collections;
 import java.util.List;
@@ -128,26 +125,19 @@ public class MainCommand {
                 final ServerPlayer player = sender;
                 if (sender == null) return 0;
 
-                List<AbstractLobby> lobbies = HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(player.getUUID());
+                List<Lobby> lobbies = HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(player.getUUID());
 
                 if (lobbies.size() == 0) {
                     context.getSource().sendFailure(new TextComponent("There are no open lobbies!"));
                     return 0;
                 }
 
-                InventoryGUI gui = new InventoryGUI("Join a Lobby");
+                InventoryGUI gui = new InventoryGUI(MComponent.createTextComponent("Join a Lobby"));
 
                 int index = 0;
-                for (AbstractLobby lby : lobbies) {
+                for (Lobby lby : lobbies) {
 
-                    ItemStack display;
-                    if (lby instanceof Lobby) {
-                        display = ((Lobby) lby).getDisplayStack();
-                    } else {
-                        display = Lobby.createDefaultItem(lby);
-                    }
-
-                    gui.setItem(display, index, (type, u) -> {
+                    gui.setItem(lby.getDisplayStack(), index, (type, u) -> {
                         if (type == AbstractInventoryGUI.ClickType.LEFT) {
                             joinCommand(context, lby.getId(), Collections.singletonList(player));
                             player.closeContainer();
@@ -165,7 +155,7 @@ public class MainCommand {
             return 1;
         }
 
-        AbstractLobby lby = HideAndSeekAPI.getInstance().getRegistry().getLobby(lobby);
+        Lobby lby = HideAndSeekAPI.getInstance().getRegistry().getLobby(lobby);
         if(lby == null) {
             context.getSource().sendFailure(new TextComponent("That is not a valid lobby!"));
             return 0;
@@ -289,8 +279,8 @@ public class MainCommand {
     private int customizeCommand(CommandContext<CommandSourceStack> context, ServerPlayer target) {
 
         try {
-            InventoryGUI gui = new InventoryGUI("Customize");
-            InventoryGUI mapsGui = new InventoryGUI("Choose a Map");
+            InventoryGUI gui = new InventoryGUI(MComponent.createTextComponent("Customize"));
+            InventoryGUI mapsGui = new InventoryGUI(MComponent.createTextComponent("Choose a Map"));
 
             int current = 0;
             for (AbstractMap m : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
@@ -299,14 +289,13 @@ public class MainCommand {
 
                         mapsGui.setItem(Map.getDisplayStack(m), current, (type, user) -> {
 
-                            InventoryGUI pos = new InventoryGUI("Select a Role");
+                            InventoryGUI pos = new InventoryGUI(MComponent.createTextComponent("Select a Role"));
 
                             int i = 0;
                             for (PositionType pt : PositionType.values()) {
                                 if (m.getData(pt).getClasses().size() > 1) {
 
-                                    ItemStack is = ItemBuilder.woolWithColor(m.getData(pt).getColor()).withName(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(m.getData(pt).getName()))).build();
-
+                                    MItemStack is = MItemStack.Builder.woolWithColor(m.getData(pt).getColor()).withName(MComponent.createTextComponent("").withStyle(MStyle.ITEM_BASE).addChild(m.getData(pt).getName())).build();
                                     pos.setItem(is, i, (type1, user1) -> openMapClassGui(user1, m, pt));
 
                                     i++;
@@ -327,7 +316,7 @@ public class MainCommand {
                 context.getSource().sendFailure(new TextComponent("There is nothing to customize!"));
             }
 
-            ItemStack is = ItemBuilder.of(Items.DIAMOND).withName(new TextComponent("Change Preferred Classes").setStyle(ItemBuilder.BASE_STYLE.withColor(ChatFormatting.AQUA))).build();
+            MItemStack is = MItemStack.Builder.of(MIdentifier.create("minecraft", "diamond")).withName(MComponent.createTextComponent("Change Preferred Classes").withStyle(MStyle.ITEM_BASE.withColor(Color.fromRGBI(11)))).build();
             gui.setItem(is, 4, (type, user) -> {
                 if (type == AbstractInventoryGUI.ClickType.LEFT) {
                     mapsGui.open(user, 0);
@@ -346,7 +335,7 @@ public class MainCommand {
 
     private void openMapClassGui(UUID user, AbstractMap map, PositionType type) {
 
-        InventoryGUI gui = new InventoryGUI("Select a Class");
+        InventoryGUI gui = new InventoryGUI(MComponent.createTextComponent("Select a Class"));
 
         int i = 0;
         for(AbstractClass clazz : map.getData(type).getClasses()) {
@@ -356,7 +345,7 @@ public class MainCommand {
                 s = clazz.getSkins().get(0).getSkin();
             }
 
-            ItemStack is = ItemBuilder.headWithSkin(s).withName(new TextComponent("").setStyle(ItemBuilder.BASE_STYLE).append(TextUtil.parse(clazz.getName()))).build();
+            MItemStack is = MItemStack.Builder.headWithSkin(s).withName(MComponent.createTextComponent("").withStyle(MStyle.ITEM_BASE).addChild(clazz.getName())).build();
             gui.setItem(is, i, (ctype, user1) -> HideAndSeekAPI.getInstance().getRegistry().setPreferredClass(user1, map, type, clazz));
             i++;
 

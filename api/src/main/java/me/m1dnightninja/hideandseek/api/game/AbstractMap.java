@@ -2,7 +2,11 @@ package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
+import me.m1dnightninja.midnightcore.api.text.MStyle;
 
 import java.io.File;
 import java.util.*;
@@ -15,8 +19,10 @@ public abstract class AbstractMap {
     protected final Vec3d hiderSpawn;
     protected final Vec3d seekerSpawn;
 
-    protected String name;
-    protected List<String> description = new ArrayList<>();
+    protected MComponent name;
+    protected List<MComponent> description = new ArrayList<>();
+
+    protected MItemStack displayItem;
 
     protected UUID author;
     protected List<UUID> editors = new ArrayList<>();
@@ -32,7 +38,7 @@ public abstract class AbstractMap {
     protected final List<Region> regions = new ArrayList<>();
 
     protected final HashMap<String, AbstractClass> mapClasses = new HashMap<>();
-    protected final HashMap<PositionType, AbstractPositionData> positionData = new HashMap<>();
+    protected final HashMap<PositionType, PositionData> positionData = new HashMap<>();
 
     protected final List<DamageSource> resetSources = new ArrayList<>();
     protected final List<DamageSource> tagSources = new ArrayList<>();
@@ -40,7 +46,7 @@ public abstract class AbstractMap {
     protected float hiderRotation = 0;
     protected float seekerRotation = 0;
 
-    protected String dimensionType;
+    protected MIdentifier dimensionType;
     protected String resPack;
     protected String resPackHash;
 
@@ -51,22 +57,22 @@ public abstract class AbstractMap {
         this.hiderSpawn = hiderSpawn;
         this.seekerSpawn = seekerSpawn;
 
-        this.name = id;
+        this.name = MComponent.createTextComponent(id);
     }
 
     public String getId() {
         return id;
     }
 
-    public AbstractPositionData getData(PositionType type) {
+    public PositionData getData(PositionType type) {
         return positionData.get(type);
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 
-    public List<String> getDescription() {
+    public List<MComponent> getDescription() {
         return description;
     }
 
@@ -154,7 +160,7 @@ public abstract class AbstractMap {
         return seekerRotation;
     }
 
-    public String getDimensionType() {
+    public MIdentifier getDimensionType() {
         return dimensionType;
     }
 
@@ -177,11 +183,14 @@ public abstract class AbstractMap {
     public void fromConfig(ConfigSection sec) {
 
         if(sec.has("name", String.class)) {
-            name = sec.getString("name");
+            name = MComponent.Serializer.parse(sec.getString("name"));
         }
 
         if(sec.has("description", List.class)) {
-            description.addAll(sec.getStringList("description"));
+
+            for(String s : sec.getStringList("description")) {
+                description.add(MComponent.Serializer.parse(s));
+            }
         }
 
         if(sec.has("random_time", Boolean.TYPE)) {
@@ -237,7 +246,7 @@ public abstract class AbstractMap {
         }
 
         if(sec.has("dimension", String.class)) {
-            dimensionType = sec.getString("dimension");
+            dimensionType = MIdentifier.parse(sec.getString("dimension"));
         }
 
         if(sec.has("reset_sources", List.class)) {
@@ -268,6 +277,31 @@ public abstract class AbstractMap {
             resPackHash = sec.getString("resource_pack_sha1");
         }
 
+        if(sec.has("item", ConfigSection.class)) {
+            ConfigSection isec = sec.getSection("item");
+
+            MIdentifier type = MIdentifier.parse(isec.getString("type"));
+            int count = isec.getInt("count");
+
+            displayItem = MItemStack.Builder.of(type).withAmount(count).withName(name).withLore(description).build();
+
+        } else {
+
+            displayItem = createDefaultItem(this);
+        }
+
+    }
+
+    private static MItemStack createDefaultItem(AbstractMap map) {
+
+        List<MComponent> cmp = map.getDescription();
+
+        return MItemStack.Builder.of(MIdentifier.create("minecraft", "white_wool")).withName(MComponent.createTextComponent("").withStyle(new MStyle().withItalic(false)).addChild(map.getName())).withLore(cmp).build();
+    }
+
+    public static MItemStack getDisplayStack(AbstractMap map) {
+
+        return map.displayItem.copy();
     }
 
 }

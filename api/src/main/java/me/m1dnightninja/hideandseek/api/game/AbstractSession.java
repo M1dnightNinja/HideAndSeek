@@ -3,6 +3,7 @@ package me.m1dnightninja.hideandseek.api.game;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,6 +104,8 @@ public abstract class AbstractSession {
 
     protected abstract void onPlayerAdded(UUID u);
     protected abstract void onPlayerRemoved(UUID u);
+
+    protected abstract void broadcastMessage(MComponent comp);
 
     protected abstract void onShutdown();
 

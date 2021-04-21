@@ -1,25 +1,26 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.midnightcore.api.Color;
+import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public abstract class AbstractPositionData {
+public class PositionData {
 
     protected final PositionType type;
     protected final List<AbstractClass> classes;
 
-    protected String name;
-    protected String pluralName;
-    protected String properName;
+    protected MComponent name;
+    protected MComponent pluralName;
+    protected MComponent properName;
 
     protected Color color;
 
-    public AbstractPositionData(PositionType type) {
+    public PositionData(PositionType type) {
         this.type = type;
         this.classes = new ArrayList<>();
 
@@ -35,15 +36,15 @@ public abstract class AbstractPositionData {
         return classes;
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 
-    public String getPluralName() {
+    public MComponent getPluralName() {
         return pluralName == null ? name : pluralName;
     }
 
-    public String getProperName() {
+    public MComponent getProperName() {
         return properName == null ? name : properName;
     }
 
@@ -54,15 +55,15 @@ public abstract class AbstractPositionData {
     public void fromConfig(ConfigSection sec, AbstractMap map) {
 
         if(sec.has("name", String.class)) {
-            name = sec.getString("name");
+            name = MComponent.Serializer.parse(sec.getString("name"));
         }
 
         if(sec.has("name_plural", String.class)) {
-            pluralName = sec.getString("name_plural");
+            pluralName = MComponent.Serializer.parse(sec.getString("name_plural"));
         }
 
         if(sec.has("name_proper", String.class)) {
-            properName = sec.getString("name_proper");
+            properName = MComponent.Serializer.parse(sec.getString("name_proper"));
         }
 
         if(sec.has("color", String.class)) {
@@ -91,6 +92,14 @@ public abstract class AbstractPositionData {
                 classes.add(tclasses.get(o));
             }
         }
-
     }
+
+    public static PositionData parse(ConfigSection sec, PositionType type, AbstractMap map) {
+
+        PositionData dt = new PositionData(type);
+        dt.fromConfig(sec, map);
+
+        return dt;
+    }
+
 }

@@ -24,7 +24,7 @@ public class SessionManager {
         return null;
     }
 
-    public AbstractLobbySession getActiveSession(AbstractLobby lobby) {
+    public AbstractLobbySession getActiveSession(Lobby lobby) {
 
         for(AbstractSession sess : sessions) {
             if(sess instanceof AbstractLobbySession && ((AbstractLobbySession) sess).getLobby() == lobby) {
@@ -41,7 +41,7 @@ public class SessionManager {
         }
     }
 
-    public boolean isLobbyOpen(AbstractLobby lobby) {
+    public boolean isLobbyOpen(Lobby lobby) {
         for(AbstractSession sess : sessions) {
             if(sess instanceof AbstractLobbySession && ((AbstractLobbySession) sess).getLobby() == lobby && ((AbstractLobbySession) sess).isRunning()) {
                 return false;
@@ -50,21 +50,21 @@ public class SessionManager {
         return true;
     }
 
-    public List<AbstractLobby> getOpenLobbies() {
+    public List<Lobby> getOpenLobbies() {
         return getOpenLobbies(null);
     }
 
-    public List<AbstractLobby> getOpenLobbies(UUID player) {
-        List<AbstractLobby> out = new ArrayList<>();
-        for(AbstractLobby l : HideAndSeekAPI.getInstance().getRegistry().getLobbies(player)) {
+    public List<Lobby> getOpenLobbies(UUID player) {
+        List<Lobby> out = new ArrayList<>();
+        for(Lobby l : HideAndSeekAPI.getInstance().getRegistry().getLobbies(player)) {
             if(isLobbyOpen(l)) out.add(l);
         }
         return out;
     }
 
-    public List<String> getLobbyNames(List<AbstractLobby> lobbies) {
+    public List<String> getLobbyNames(List<Lobby> lobbies) {
         List<String> out = new ArrayList<>();
-        for(AbstractLobby l : lobbies) {
+        for(Lobby l : lobbies) {
             out.add(l.getId());
         }
         return out;

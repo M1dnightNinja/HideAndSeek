@@ -7,6 +7,7 @@ import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.fabric.api.WorldCreator;
 import me.m1dnightninja.midnightcore.fabric.dimension.EmptyGenerator;
 import me.m1dnightninja.midnightcore.fabric.module.DimensionModule;
+import me.m1dnightninja.midnightcore.fabric.util.ConversionUtil;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -38,7 +39,7 @@ public class DimensionManager extends AbstractDimensionManager<ServerLevel> {
 
         ResourceKey<LevelStem> opts;
         if(map.getDimensionType() != null) {
-            ResourceLocation id = new ResourceLocation(map.getDimensionType());
+            ResourceLocation id = ConversionUtil.toResourceLocation(map.getDimensionType());
             opts = ResourceKey.create(Registry.LEVEL_STEM_REGISTRY, id);
         } else {
             opts = LevelStem.OVERWORLD;

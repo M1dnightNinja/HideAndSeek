@@ -6,7 +6,7 @@ import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.hideandseek.api.game.SkinOption;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
-import me.m1dnightninja.midnightcore.api.module.ISkinModule;
+import me.m1dnightninja.midnightcore.api.module.skin.ISkinModule;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;

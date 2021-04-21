@@ -6,7 +6,7 @@ import me.m1dnightninja.hideandseek.api.core.SessionManager;
 import me.m1dnightninja.hideandseek.api.game.Region;
 import me.m1dnightninja.midnightcore.api.ILogger;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
-import me.m1dnightninja.midnightcore.api.lang.AbstractLangProvider;
+import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
 
 import java.util.Random;
 
@@ -20,11 +20,11 @@ public class HideAndSeekAPI {
     private final HideAndSeekRegistry registry;
     private final SessionManager sessionManager;
 
-    private final AbstractLangProvider langProvider;
+    private final ILangProvider langProvider;
 
     private MainSettings mainSettings;
 
-    public HideAndSeekAPI(ILogger logger, AbstractLangProvider langProvider) {
+    public HideAndSeekAPI(ILogger logger, ILangProvider langProvider) {
 
         MidnightCoreAPI.getConfigRegistry().registerSerializer(Region.class, Region.SERIALIZER);
 
@@ -42,7 +42,7 @@ public class HideAndSeekAPI {
 
     }
 
-    public AbstractLangProvider getLangProvider() {
+    public ILangProvider getLangProvider() {
         return langProvider;
     }
 

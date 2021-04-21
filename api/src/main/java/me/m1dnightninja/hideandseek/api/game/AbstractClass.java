@@ -2,13 +2,14 @@ package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.*;
 
 public abstract class AbstractClass {
 
     protected final String id;
-    protected String name;
+    protected MComponent name;
 
     protected final List<String> desc = new ArrayList<>();
 
@@ -21,7 +22,7 @@ public abstract class AbstractClass {
 
     public AbstractClass(String id) {
         this.id = id;
-        this.name = id;
+        this.name = MComponent.createTextComponent(id);
     }
 
 
@@ -33,7 +34,7 @@ public abstract class AbstractClass {
         return desc;
     }
 
-    public String getName() {
+    public MComponent getName() {
         return name;
     }
 
@@ -66,7 +67,7 @@ public abstract class AbstractClass {
         equivalencies.clear();
 
         if(sec.has("name")) {
-            name = sec.getString("name");
+            name = MComponent.Serializer.parse(sec.getString("name"));
         }
 
         if(sec.has("description", List.class)) {

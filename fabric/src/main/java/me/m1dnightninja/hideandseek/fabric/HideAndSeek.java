@@ -1,6 +1,5 @@
 package me.m1dnightninja.hideandseek.fabric;
 
-import com.google.gson.JsonElement;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.command.MainCommand;
 import me.m1dnightninja.hideandseek.fabric.game.*;
@@ -8,31 +7,31 @@ import me.m1dnightninja.hideandseek.fabric.gamemode.ClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.manager.DimensionManager;
 import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
 import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.fabric.util.LangUtil;
 import me.m1dnightninja.midnightcore.api.ILogger;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigProvider;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
-import me.m1dnightninja.midnightcore.api.module.ILangModule;
+import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
+import me.m1dnightninja.midnightcore.api.module.lang.PlaceholderSupplier;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.common.JsonConfigProvider;
 import me.m1dnightninja.midnightcore.common.JsonWrapper;
 import me.m1dnightninja.midnightcore.fabric.Logger;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
-import me.m1dnightninja.midnightcore.fabric.api.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.api.MidnightCoreModInitializer;
 import me.m1dnightninja.midnightcore.fabric.api.event.*;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
-import me.m1dnightninja.midnightcore.fabric.module.LangModule;
-import me.m1dnightninja.midnightcore.fabric.util.TextUtil;
+import me.m1dnightninja.midnightcore.fabric.module.lang.LangModule;
+import me.m1dnightninja.midnightcore.fabric.module.lang.LangProvider;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 
 import java.io.*;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,21 +89,14 @@ public class HideAndSeek implements MidnightCoreModInitializer {
             new JsonWrapper(f).save();
         }
 
-        JsonWrapper w = new JsonWrapper();
-        w.load(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json"));
-
-        HashMap<String, String> defaults = new HashMap<>();
-        for(java.util.Map.Entry<String, JsonElement> ent : w.getRoot().entrySet()) {
-            defaults.put(ent.getKey(), ent.getValue().getAsString());
-        }
-
+        ConfigSection sec = configProvider.loadFromStream(getClass().getResourceAsStream("/assets/hideandseek/lang/en_us.json"));
         if(!MidnightCoreAPI.getInstance().areAllModulesLoaded("midnightcore:skin", "midnightcore:dimension", "midnightcore:lang", "midnightcore:save_point", "midnightcore:player_data")) {
 
             logger.warn("One or more required MidnightCore modules are not loaded!");
             return;
         }
 
-        loadLang(MidnightCoreAPI.getInstance().getModule(LangModule.class), langFolder, defaults);
+        loadLang(MidnightCoreAPI.getInstance().getModule(LangModule.class), langFolder, sec);
 
         dimensionManager = new DimensionManager();
 
@@ -153,7 +145,7 @@ public class HideAndSeek implements MidnightCoreModInitializer {
     }
 
     private void loadGameModes() {
-        api.getRegistry().registerGameType(new GameType("classic", langProvider.getMessage("gamemode.classic")) {
+        api.getRegistry().registerGameType(new GameType("classic", langProvider.getMessage("gamemode.classic", (UUID) null)) {
             @Override
             public AbstractGameInstance create(AbstractLobbySession lobby, UUID player, AbstractMap map) {
                 return new ClassicGameMode(lobby, player, map);
@@ -272,17 +264,14 @@ public class HideAndSeek implements MidnightCoreModInitializer {
     }
 
 
-    private void loadLang(ILangModule<Component> module, File langFolder, HashMap<String, String> defaults) {
+    private void loadLang(LangModule module, File langFolder, ConfigSection defaults) {
 
-        Map.registerPlaceholders(module);
-        Lobby.registerPlaceholders(module);
-        LobbySession.registerPlaceholders(module);
-        PositionData.registerPlaceholders(module);
+        LangUtil.registerPlaceholders(module);
 
-        module.registerStringPlaceholder("hideandseek_region_id", module.createSupplier(Region.class, Region::getId));
-        module.registerRawPlaceholder("hideandseek_region_name", module.createSupplier(Region.class, reg -> TextUtil.parse(reg.getDisplay())));
+        module.registerInlinePlaceholderSupplier("hideandseek_region_id", PlaceholderSupplier.create(Region.class, Region::getId));
+        module.registerPlaceholderSupplier("hideandseek_region_name", PlaceholderSupplier.create(Region.class, reg -> MComponent.Serializer.parse(reg.getDisplay())));
 
-        langProvider = (LangProvider) module.createProvider("hideandseek", langFolder, defaults);
+        langProvider = module.createLangProvider(langFolder, configProvider, defaults);
     }
 
     public static HideAndSeek getInstance() {

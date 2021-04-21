@@ -2,7 +2,7 @@ package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.AbstractMap;
-import me.m1dnightninja.hideandseek.api.game.AbstractPositionData;
+import me.m1dnightninja.hideandseek.api.game.PositionData;
 import me.m1dnightninja.hideandseek.api.game.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.PositionType;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
@@ -49,7 +49,7 @@ public class MapInstance {
             scoreboard = world.getScoreboard();
 
             for (PositionType t : PositionType.values()) {
-                AbstractPositionData data = base.getData(t);
+                PositionData data = base.getData(t);
                 if (data == null) continue;
 
                 PlayerTeam team = new PlayerTeam(scoreboard, RandomStringUtils.random(16, true, false));
