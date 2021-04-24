@@ -60,10 +60,16 @@ public class PositionData {
 
         if(sec.has("name_plural", String.class)) {
             pluralName = MComponent.Serializer.parse(sec.getString("name_plural"));
+        } else {
+            pluralName = name.copy();
+            pluralName.setContent(name.getContent() + "s");
         }
 
         if(sec.has("name_proper", String.class)) {
             properName = MComponent.Serializer.parse(sec.getString("name_proper"));
+        } else {
+            properName = name.copy();
+            properName.setContent("The " + name.getContent());
         }
 
         if(sec.has("color", String.class)) {

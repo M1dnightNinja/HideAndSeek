@@ -1,12 +1,12 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
+import me.m1dnightninja.midnightcore.api.text.AbstractTimer;
 
 import java.util.UUID;
 

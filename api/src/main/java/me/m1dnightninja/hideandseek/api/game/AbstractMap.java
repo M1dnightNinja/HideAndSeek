@@ -287,16 +287,14 @@ public abstract class AbstractMap {
 
         } else {
 
-            displayItem = createDefaultItem(this);
+            List<MComponent> lore = new ArrayList<>();
+            for(MComponent comp : description) {
+                lore.add(comp.copy().withStyle(comp.getStyle().fill(MStyle.ITEM_BASE)));
+            }
+
+            displayItem = MItemStack.Builder.of(MIdentifier.create("minecraft", "white_wool")).withName(name.copy().withStyle(name.getStyle().fill(MStyle.ITEM_BASE))).withLore(lore).build();
         }
 
-    }
-
-    private static MItemStack createDefaultItem(AbstractMap map) {
-
-        List<MComponent> cmp = map.getDescription();
-
-        return MItemStack.Builder.of(MIdentifier.create("minecraft", "white_wool")).withName(MComponent.createTextComponent("").withStyle(new MStyle().withItalic(false)).addChild(map.getName())).withLore(cmp).build();
     }
 
     public static MItemStack getDisplayStack(AbstractMap map) {

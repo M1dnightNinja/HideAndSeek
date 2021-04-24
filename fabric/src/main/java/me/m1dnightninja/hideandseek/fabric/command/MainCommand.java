@@ -10,7 +10,7 @@ import me.m1dnightninja.hideandseek.fabric.game.EditingSession;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.hideandseek.fabric.game.LobbySession;
 import me.m1dnightninja.hideandseek.fabric.game.Map;
-import me.m1dnightninja.midnightcore.api.AbstractInventoryGUI;
+import me.m1dnightninja.midnightcore.api.inventory.AbstractInventoryGUI;
 import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.module.skin.Skin;
@@ -18,7 +18,6 @@ import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
 import me.m1dnightninja.midnightcore.fabric.api.InventoryGUI;
-import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -103,7 +102,8 @@ public class MainCommand {
 
     private boolean hasPermission(CommandSourceStack st, String perm) {
 
-        return st.hasPermission(2) || PermissionHelper.check(st, perm);
+        return true;
+        //return st.hasPermission(2) || PermissionHelper.check(st, perm);
     }
 
     private int joinCommand(CommandContext<CommandSourceStack> context, String lobby, List<ServerPlayer> players) {

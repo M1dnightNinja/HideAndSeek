@@ -3,12 +3,12 @@ package me.m1dnightninja.hideandseek.common;
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.api.game.AbstractMap;
-import me.m1dnightninja.midnightcore.api.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
 import me.m1dnightninja.midnightcore.api.text.AbstractTitle;
+import me.m1dnightninja.midnightcore.api.text.AbstractTimer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
 import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
@@ -60,16 +60,16 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             try {
                 setupPlayer(u);
 
-                AbstractTitle title = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_title", u, positions.get(u)), u, map.getData(positions.get(u))), AbstractTitle.TITLE);
+                AbstractTitle title = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_title", u, positions.get(u)), u, u, map.getData(positions.get(u))), AbstractTitle.TITLE);
                 AbstractTitle subtitle;
 
                 if(positions.get(u).isSeeker()) {
 
-                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.MAIN_SEEKER), u, map.getData(PositionType.HIDER)), AbstractTitle.SUBTITLE);
+                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.MAIN_SEEKER), u, u, map.getData(PositionType.HIDER)), AbstractTitle.SUBTITLE);
 
                 } else {
 
-                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.HIDER), u, map.getData(PositionType.MAIN_SEEKER)), AbstractTitle.SUBTITLE);
+                    subtitle = MidnightCoreAPI.getInstance().createTitle(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("start_subtitle", u, PositionType.HIDER), u, u, map.getData(PositionType.MAIN_SEEKER)), AbstractTitle.SUBTITLE);
 
                 }
 
@@ -346,8 +346,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     @Override
     protected void onPlayerRemoved(UUID u) {
 
-        scoreboards.get(u).removePlayer(u);
-
+        if(scoreboards.containsKey(u)) scoreboards.get(u).removePlayer(u);
         super.onPlayerRemoved(u);
     }
 

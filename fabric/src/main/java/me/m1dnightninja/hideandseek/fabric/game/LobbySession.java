@@ -48,6 +48,8 @@ public class LobbySession extends AbstractLobbySession {
 
     @Override
     protected void onPlayerAdded(UUID u) {
+        super.onPlayerAdded(u);
+
         ServerPlayer ent = MidnightCore.getServer().getPlayerList().getPlayer(u);
 
         if(ent == null) {
@@ -83,9 +85,9 @@ public class LobbySession extends AbstractLobbySession {
 
         Component comp = ConversionUtil.toMinecraftComponent(message);
 
-        for(UUID u : getPlayerIds()) {
+        for (UUID u : getPlayerIds()) {
             ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(pl == null) continue;
+            if (pl == null) continue;
             pl.sendMessage(comp, ChatType.SYSTEM, Util.NIL_UUID);
         }
     }

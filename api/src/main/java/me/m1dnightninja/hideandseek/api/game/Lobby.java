@@ -6,6 +6,7 @@ import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
 
@@ -21,7 +22,7 @@ public class Lobby {
     protected MItemStack displayStack;
 
     protected MComponent name;
-    protected List<MComponent> description;
+    protected List<MComponent> description = new ArrayList<>();
 
     protected String permission;
 
@@ -167,6 +168,14 @@ public class Lobby {
                 display.set("Lore", strs);
                 tag.set("display", display);
             }
+        } else {
+
+            List<MComponent> lore = new ArrayList<>();
+            for(MComponent comp : description) {
+                lore.add(comp.copy().withStyle(comp.getStyle().fill(MStyle.ITEM_BASE)));
+            }
+
+            displayStack = MItemStack.Builder.of(MIdentifier.create("minecraft", "white_wool")).withName(name.copy().withStyle(name.getStyle().fill(MStyle.ITEM_BASE))).withLore(lore).build();
         }
     }
 

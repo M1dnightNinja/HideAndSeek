@@ -147,7 +147,7 @@ public class HideAndSeekRegistry {
 
     public AbstractClass getPreferredClass(UUID u, AbstractMap map, PositionType type) {
 
-        if(!preferredClasses.containsKey(u)) return null;
+        if(!preferredClasses.containsKey(u) || !preferredClasses.get(u).containsKey(map)) return null;
         return preferredClasses.get(u).get(map).get(type);
     }
 
