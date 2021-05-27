@@ -5,13 +5,12 @@ import me.m1dnightninja.hideandseek.api.game.PositionData;
 import me.m1dnightninja.hideandseek.api.game.PositionType;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
-import me.m1dnightninja.midnightcore.fabric.MidnightCore;
-import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.io.File;
 import java.util.List;
-import java.util.UUID;
 
 public class Map extends AbstractMap {
 
@@ -20,11 +19,11 @@ public class Map extends AbstractMap {
     }
 
     @Override
-    public boolean canEdit(UUID u) {
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+    public boolean canEdit(MPlayer u) {
+        ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
         if(player == null) return false;
 
-        return player.getUUID().equals(author) || editors.contains(player.getUUID()) || PermissionHelper.check(u, "hideandseek.edit." + getId());
+        return player.getUUID().equals(author) || editors.contains(player.getUUID()) || u.hasPermission("hideandseek.edit." + getId());
     }
 
     @Override

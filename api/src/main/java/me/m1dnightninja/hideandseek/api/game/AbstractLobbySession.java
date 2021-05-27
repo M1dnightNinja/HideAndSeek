@@ -1,14 +1,14 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
 import me.m1dnightninja.midnightcore.api.text.AbstractTimer;
-
-import java.util.UUID;
 
 public abstract class AbstractLobbySession extends AbstractSession {
 
@@ -32,24 +32,24 @@ public abstract class AbstractLobbySession extends AbstractSession {
     }
 
     @Override
-    protected boolean shouldAddPlayer(UUID u) {
-        return getPlayerCount() < lobby.getMaxPlayers() && !getPlayerIds().contains(u);
+    protected boolean shouldAddPlayer(MPlayer u) {
+        return getPlayerCount() < lobby.getMaxPlayers() && !getPlayers().contains(u);
     }
 
     @Override
-    protected void onPlayerAdded(UUID u) {
+    protected void onPlayerAdded(MPlayer u) {
 
         if(startTimer == null) {
 
             if (getPlayerCount() == lobby.getMinPlayers()) {
 
-                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", (UUID) null, this, lobby), 180, false, secondsLeft -> {
+                startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.start_timer", (MPlayer) null, this, lobby), 180, false, secondsLeft -> {
                     if(secondsLeft == 0) {
                         if(isRunning()) return;
                         startGame(null, null);
                     }
                 });
-                for (UUID o : getPlayerIds()) {
+                for (MPlayer o : getPlayers()) {
                     startTimer.addPlayer(o);
                 }
                 startTimer.start();
@@ -58,7 +58,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
             startTimer.addPlayer(u);
         }
 
-        broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.join", (UUID) null, this, u));
+        broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.join", (MPlayer) null, this, u));
 
         scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
         scoreboard.update();
@@ -67,7 +67,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
     }
 
-    public void startGame(UUID seeker, AbstractMap map) {
+    public void startGame(MPlayer seeker, AbstractMap map) {
         if(startTimer != null) {
             startTimer.cancel();
         }
@@ -97,7 +97,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
     }
 
     @Override
-    protected void onPlayerRemoved(UUID u) {
+    protected void onPlayerRemoved(MPlayer u) {
 
         if(runningInstance != null) {
 
@@ -112,7 +112,7 @@ public abstract class AbstractLobbySession extends AbstractSession {
         scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
         scoreboard.update();
         scoreboard.removePlayer(u);
-        if(!isShutdown()) broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.leave", (UUID) null, this, u));
+        if(!isShutdown()) broadcastMessage(HideAndSeekAPI.getInstance().getLangProvider().getMessage("lobby.leave", (MPlayer) null, this, u));
 
     }
 

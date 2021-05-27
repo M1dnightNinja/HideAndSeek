@@ -2,10 +2,10 @@ package me.m1dnightninja.hideandseek.api.core;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.hideandseek.api.game.*;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class SessionManager {
 
@@ -16,10 +16,10 @@ public class SessionManager {
         sess.addCallback(() -> sessions.remove(sess));
     }
 
-    public AbstractSession getSession(UUID u) {
+    public AbstractSession getSession(MPlayer u) {
 
         for(AbstractSession sess : sessions) {
-            if(sess.getPlayerIds().contains(u)) return sess;
+            if(sess.getPlayers().contains(u)) return sess;
         }
         return null;
     }
@@ -54,7 +54,7 @@ public class SessionManager {
         return getOpenLobbies(null);
     }
 
-    public List<Lobby> getOpenLobbies(UUID player) {
+    public List<Lobby> getOpenLobbies(MPlayer player) {
         List<Lobby> out = new ArrayList<>();
         for(Lobby l : HideAndSeekAPI.getInstance().getRegistry().getLobbies(player)) {
             if(isLobbyOpen(l)) out.add(l);
@@ -70,7 +70,7 @@ public class SessionManager {
         return out;
     }
 
-    public List<String> getEditableMapNames(UUID u) {
+    public List<String> getEditableMapNames(MPlayer u) {
         List<String> out = new ArrayList<>();
         for(AbstractMap map : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
             if(u == null || map.canEdit(u)) out.add(map.getId());
@@ -78,11 +78,11 @@ public class SessionManager {
         return out;
     }
 
-    public boolean onDamaged(UUID u, UUID damager, DamageSource source, float amount) {
+    public boolean onDamaged(MPlayer u, MPlayer damager, DamageSource source, float amount) {
 
         boolean out = false;
         for(AbstractSession sess : sessions) {
-            if(sess.getPlayerIds().contains(u)) {
+            if(sess.getPlayers().contains(u)) {
                 sess.onDamaged(u, damager, source, amount);
                 out = true;
             }

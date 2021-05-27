@@ -1,8 +1,7 @@
 package me.m1dnightninja.hideandseek.api.game;
 
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
-
-import java.util.UUID;
 
 public abstract class GameType {
 
@@ -14,7 +13,7 @@ public abstract class GameType {
         this.name = name;
     }
 
-    public abstract AbstractGameInstance create(AbstractLobbySession lobby, UUID player, AbstractMap map);
+    public abstract AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, AbstractMap map);
 
     public String getId() {
         return id;

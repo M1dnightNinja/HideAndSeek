@@ -3,6 +3,7 @@ package me.m1dnightninja.hideandseek.api.game;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
@@ -52,6 +53,18 @@ public class PositionData {
         return color;
     }
 
+    public List<AbstractClass> getPlayerClasses(MPlayer player) {
+
+        List<AbstractClass> classes = new ArrayList<>();
+        for(AbstractClass clazz : getClasses()) {
+            if(clazz.canUse(player)) {
+                classes.add(clazz);
+            }
+        }
+
+        return classes;
+    }
+
     public void fromConfig(ConfigSection sec, AbstractMap map) {
 
         if(sec.has("name", String.class)) {
@@ -62,14 +75,14 @@ public class PositionData {
             pluralName = MComponent.Serializer.parse(sec.getString("name_plural"));
         } else {
             pluralName = name.copy();
-            pluralName.setContent(name.getContent() + "s");
+            pluralName.addChild(MComponent.createTextComponent("s"));
         }
 
         if(sec.has("name_proper", String.class)) {
             properName = MComponent.Serializer.parse(sec.getString("name_proper"));
         } else {
-            properName = name.copy();
-            properName.setContent("The " + name.getContent());
+            properName = MComponent.createTextComponent("The ").withStyle(name.getStyle());
+            properName.addChild(name.copy());
         }
 
         if(sec.has("color", String.class)) {

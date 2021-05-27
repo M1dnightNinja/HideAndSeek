@@ -4,6 +4,8 @@ import me.m1dnightninja.hideandseek.api.core.HideAndSeekRegistry;
 import me.m1dnightninja.hideandseek.api.core.MainSettings;
 import me.m1dnightninja.hideandseek.api.core.SessionManager;
 import me.m1dnightninja.hideandseek.api.game.Region;
+import me.m1dnightninja.hideandseek.api.integration.MidnightItemsIntegration;
+import me.m1dnightninja.hideandseek.api.integration.MidnightMenusIntegration;
 import me.m1dnightninja.midnightcore.api.ILogger;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
@@ -39,6 +41,20 @@ public class HideAndSeekAPI {
         this.langProvider = langProvider;
 
         this.mainSettings = new MainSettings();
+
+        try {
+            Class.forName("me.m1dnightninja.midnightitems.api.MidnightItemsAPI");
+            MidnightItemsIntegration.init();
+        } catch (ClassNotFoundException ex) {
+            // Ignore
+        }
+
+        try {
+            Class.forName("me.m1dnightninja.midnightmenus.api.MidnightMenusAPI");
+            MidnightMenusIntegration.init();
+        } catch (ClassNotFoundException ex) {
+            // Ignore
+        }
 
     }
 

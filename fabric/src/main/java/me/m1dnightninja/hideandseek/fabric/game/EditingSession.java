@@ -1,13 +1,14 @@
 package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.api.game.AbstractMap;
-import me.m1dnightninja.hideandseek.api.game.AbstractSession;
+import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.DamageSource;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
-import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import me.m1dnightninja.midnightcore.fabric.util.ConversionUtil;
 import net.minecraft.Util;
 import net.minecraft.network.chat.ChatType;
@@ -16,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class EditingSession extends AbstractSession {
 
@@ -43,15 +43,15 @@ public class EditingSession extends AbstractSession {
     }
 
     @Override
-    protected boolean shouldAddPlayer(UUID u) {
+    protected boolean shouldAddPlayer(MPlayer u) {
 
         return instance != null || !initialized;
     }
 
     @Override
-    protected void onPlayerAdded(UUID u) {
+    protected void onPlayerAdded(MPlayer u) {
 
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
         if(player == null) {
             removePlayer(u);
             return;
@@ -67,25 +67,12 @@ public class EditingSession extends AbstractSession {
     }
 
     @Override
-    protected void onPlayerRemoved(UUID u) {
+    protected void onPlayerRemoved(MPlayer u) {
 
         if(instance != null) {
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
             instance.onLeave(player);
         }
-    }
-
-    @Override
-    protected void broadcastMessage(MComponent comp) {
-        Component send = ConversionUtil.toMinecraftComponent(comp);
-
-        for(UUID u : players) {
-            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(pl == null) continue;
-
-            pl.sendMessage(send, ChatType.SYSTEM, Util.NIL_UUID);
-        }
-
     }
 
     @Override
@@ -98,6 +85,6 @@ public class EditingSession extends AbstractSession {
     public void onTick() { }
 
     @Override
-    public void onDamaged(UUID u, UUID damager, DamageSource damageSource, float amount) { }
+    public void onDamaged(MPlayer u, MPlayer damager, DamageSource damageSource, float amount) { }
 
 }

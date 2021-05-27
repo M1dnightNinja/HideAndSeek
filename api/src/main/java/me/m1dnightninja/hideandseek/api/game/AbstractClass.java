@@ -1,7 +1,12 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.integration.MidnightItemsIntegration;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
+import me.m1dnightninja.midnightcore.api.module.lang.CustomPlaceholderInline;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
+import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.*;
@@ -12,13 +17,19 @@ public abstract class AbstractClass {
     protected MComponent name;
 
     protected final List<String> desc = new ArrayList<>();
-
-    protected final List<SkinOption> skins = new ArrayList<>();
+    protected final List<String> skins = new ArrayList<>();
+    protected final List<MItemStack> items = new ArrayList<>();
+    protected final HashMap<String, MItemStack> equipment = new HashMap<>();
 
     protected final HashMap<PositionType, String> tempEquivalencies = new HashMap<>();
     protected final HashMap<PositionType, AbstractClass> equivalencies = new HashMap<>();
 
-    private boolean dirty = false;
+    protected final HashMap<CommandActivationPoint, List<String>> commands = new HashMap<>();
+
+    protected boolean taggable = true;
+    protected String permission = null;
+
+    private boolean dirty = true;
 
     public AbstractClass(String id) {
         this.id = id;
@@ -38,7 +49,7 @@ public abstract class AbstractClass {
         return name;
     }
 
-    public List<SkinOption> getSkins() {
+    public List<String> getSkins() {
         return skins;
     }
 
@@ -58,7 +69,30 @@ public abstract class AbstractClass {
         dirty = false;
     }
 
-    public abstract void applyToPlayer(UUID uid, SkinOption option);
+    public void executeCommands(CommandActivationPoint point, MPlayer player, MPlayer tagger) {
+        if(!commands.containsKey(point)) return;
+
+        for(String s : commands.get(point)) {
+            s = HideAndSeekAPI.getInstance().getLangProvider().getModule().applyPlaceholdersFlattened(s, player, new CustomPlaceholderInline("tagger_name", tagger == null ? "" : tagger.getName().allContent()), this);
+            executeCommand(s);
+        }
+    }
+
+    public boolean isTaggable() {
+        return taggable;
+    }
+
+    public String getPermission() {
+        return permission;
+    }
+
+    public boolean canUse(MPlayer pl) {
+        return permission == null || pl.hasPermission(permission);
+    }
+
+    protected abstract void executeCommand(String s);
+
+    public abstract void applyToPlayer(MPlayer uid);
 
     public void fromConfig(ConfigSection sec) {
 
@@ -78,10 +112,21 @@ public abstract class AbstractClass {
             for(Object o : sec.get("skins", List.class)) {
 
                 if(!(o instanceof String)) continue;
+                skins.add((String) o);
+            }
+        }
 
-                SkinOption opt = HideAndSeekAPI.getInstance().getRegistry().getSkin((String) o);
-                skins.add(opt);
+        if(sec.has("items", List.class)) {
+            for(ConfigSection item : sec.getListFiltered("items", ConfigSection.class)) {
+                items.add(parseItem(item));
+            }
+        }
 
+        if(sec.has("equipment", ConfigSection.class)) {
+            ConfigSection equipment = sec.getSection("equipment");
+            for(String s : equipment.getKeys()) {
+                if(!equipment.has(s, ConfigSection.class)) continue;
+                this.equipment.put(s, parseItem(equipment.getSection(s)));
             }
         }
 
@@ -97,7 +142,55 @@ public abstract class AbstractClass {
             }
         }
 
+        if(sec.has("commands", ConfigSection.class)) {
+            ConfigSection cmds = sec.getSection("commands");
+            for(String s : cmds.getKeys()) {
+                CommandActivationPoint act = CommandActivationPoint.byId(s);
+                if(act == null || !cmds.has(s, List.class)) continue;
+
+                commands.put(act, cmds.getStringList(s));
+            }
+        }
+
+        if(sec.has("taggable", Boolean.class)) {
+            taggable = sec.getBoolean("taggable");
+        }
+
+        if(sec.has("permission", String.class)) {
+            permission = sec.getString("permission");
+        }
+
         dirty = true;
+
+    }
+
+    private static MItemStack parseItem(ConfigSection sec) {
+        if(sec.has("midnight_item", String.class)) {
+
+            return MidnightItemsIntegration.getItem(MIdentifier.parse(sec.getString("midnight_item")));
+        }
+        return MItemStack.SERIALIZER.deserialize(sec);
+    }
+
+    public enum CommandActivationPoint {
+
+        SETUP("setup"),
+        TAGGED("tagged"),
+        TAGGED_ENVIRONMENT("tagged_environment"),
+        TAG("tag"),
+        END("end");
+
+        String id;
+        CommandActivationPoint(String id) {
+            this.id = id;
+        }
+
+        static CommandActivationPoint byId(String id) {
+            for(CommandActivationPoint act : values()) {
+                if(id.equals(act.id)) return act;
+            }
+            return null;
+        }
 
     }
 

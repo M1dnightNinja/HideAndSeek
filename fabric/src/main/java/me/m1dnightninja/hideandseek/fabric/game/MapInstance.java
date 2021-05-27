@@ -3,10 +3,11 @@ package me.m1dnightninja.hideandseek.fabric.game;
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.api.game.PositionData;
-import me.m1dnightninja.hideandseek.api.game.AbstractSession;
+import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.PositionType;
-import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.protocol.game.ClientboundResourcePackPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
@@ -19,7 +20,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.UUID;
 
 public class MapInstance {
 
@@ -61,9 +61,9 @@ public class MapInstance {
 
                 teams.put(t, team);
 
-                for(UUID u : session.getPlayerIds()) {
+                for(MPlayer u : session.getPlayers()) {
 
-                    ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                    ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                     if(pl == null) continue;
 
                     pl.connection.send(new ClientboundSetPlayerTeamPacket(team, 0));
@@ -104,10 +104,11 @@ public class MapInstance {
         if(teams.containsKey(type)) {
             PlayerTeam t = teams.get(type);
             t.getPlayers().add(name);
-            for(UUID u : session.getPlayerIds()) {
+            for(MPlayer u : session.getPlayers()) {
 
-                ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                 if(pl == null) continue;
+
                 pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name), 3));
             }
         }
@@ -117,10 +118,11 @@ public class MapInstance {
         for(PlayerTeam t : teams.values()) {
             if(t.getPlayers().contains(name)) {
                 t.getPlayers().remove(name);
-                for(UUID u : session.getPlayerIds()) {
+                for(MPlayer u : session.getPlayers()) {
 
-                    ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                    ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                     if(pl == null) continue;
+
                     pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name),4));
                 }
             }

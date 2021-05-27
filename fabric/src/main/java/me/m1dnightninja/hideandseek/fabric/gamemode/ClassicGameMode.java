@@ -5,22 +5,19 @@ import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.api.game.AbstractMap;
 import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
+import me.m1dnightninja.hideandseek.fabric.event.HideAndSeekRoleUpdatedEvent;
 import me.m1dnightninja.hideandseek.fabric.game.MapInstance;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
-import me.m1dnightninja.hideandseek.fabric.util.ConversionUtil;
 import me.m1dnightninja.hideandseek.fabric.util.FireworkUtil;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
-import me.m1dnightninja.midnightcore.api.text.MComponent;
-import me.m1dnightninja.midnightcore.api.text.MStyle;
-import me.m1dnightninja.midnightcore.fabric.MidnightCore;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
-import net.minecraft.Util;
-import net.minecraft.network.chat.ChatType;
-import net.minecraft.network.chat.Component;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -34,21 +31,27 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
     private MapInstance currentMap;
 
-    private final HashMap<UUID, List<UUID>> hidden = new HashMap<>();
+    private final HashMap<MPlayer, List<MPlayer>> hidden = new HashMap<>();
 
     private final boolean useAntiCheat;
 
-    public ClassicGameMode(AbstractLobbySession lobby, UUID seeker, AbstractMap map) {
+    public ClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, AbstractMap map) {
         super(lobby, seeker, map);
 
         useAntiCheat = HideAndSeekAPI.getInstance().getMainSettings().isAntiCheatEnabled();
 
         Event.register(PacketSendEvent.class, this, event -> {
             if(state == ClassicGameState.UNINITIALIZED || (!useAntiCheat && state != ClassicGameState.HIDING)) return;
+
+            MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(event.getPlayer().getUUID());
+
             if(event.getPacket() instanceof ClientboundAddPlayerPacket) {
 
+
                 UUID id = ((AccessorPlayerSpawnPacket) event.getPacket()).getPlayerId();
-                if(hidden.containsKey(event.getPlayer().getUUID()) && hidden.get(event.getPlayer().getUUID()).contains(id)) {
+                MPlayer other = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(id);
+
+                if(hidden.containsKey(pl) && hidden.get(pl).contains(other)) {
                     event.setCancelled(true);
                 }
             }
@@ -56,8 +59,11 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
                 int id = ((AccessorMoveEntityPacket) event.getPacket()).getEntityId();
                 Entity ent = currentMap.getWorld().getEntity(id);
+                if(ent == null) return;
 
-                if(ent instanceof ServerPlayer && hidden.containsKey(event.getPlayer().getUUID()) && hidden.get(event.getPlayer().getUUID()).contains(ent.getUUID())) {
+                MPlayer other = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(ent.getUUID());
+
+                if(ent instanceof ServerPlayer && hidden.containsKey(pl) && hidden.get(pl).contains(other)) {
                     event.setCancelled(true);
                 }
 
@@ -71,14 +77,14 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
         if(!useAntiCheat) {
 
-            for(UUID u : hidden.keySet()) {
+            for(MPlayer u : hidden.keySet()) {
 
-                ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+                ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
                 if(player == null) continue;
 
-                for(UUID uu : hidden.get(u)) {
+                for(MPlayer uu : hidden.get(u)) {
 
-                    ServerPlayer other = MidnightCore.getServer().getPlayerList().getPlayer(uu);
+                    ServerPlayer other = ((FabricPlayer) uu).getMinecraftPlayer();
                     if(other == null) continue;
 
                     player.connection.send(new ClientboundAddPlayerPacket(other));
@@ -97,9 +103,9 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     public void onTick() {
         if(state == ClassicGameState.UNINITIALIZED) return;
 
-        for(Map.Entry<UUID, PositionType> ent : positions.entrySet()) {
+        for(Map.Entry<MPlayer, PositionType> ent : positions.entrySet()) {
 
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(ent.getKey());
+            ServerPlayer player = ((FabricPlayer) ent.getKey()).getMinecraftPlayer();
             if(player == null) continue;
 
             Vec3d newLoc = new Vec3d(player.getX(), player.getY(), player.getZ());
@@ -113,7 +119,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             for(Region reg : map.getRegions()) {
                 if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
 
-                    HideAndSeek.getInstance().getLangProvider().sendMessage(getKey("deny_region_entry", player.getUUID(), ent.getValue()), player.getUUID(), player, reg);
+                    HideAndSeekAPI.getInstance().getLangProvider().sendMessage(getKey("deny_region_entry", ent.getKey(), ent.getValue()), ent.getKey(), player, reg);
                     toTeleport.add(ent.getKey());
                 }
             }
@@ -126,10 +132,10 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             }
 
             if(useAntiCheat && state != ClassicGameState.HIDING && positions.get(ent.getKey()).isSeeker()) {
-                for(Map.Entry<UUID, PositionType> ent1 : positions.entrySet()) {
+                for(Map.Entry<MPlayer, PositionType> ent1 : positions.entrySet()) {
                     if(ent1.getValue().isSeeker()) continue;
 
-                    ServerPlayer other = MidnightCore.getServer().getPlayerList().getPlayer(ent1.getKey());
+                    ServerPlayer other = ((FabricPlayer) ent1.getKey()).getMinecraftPlayer();
                     if(other == null) continue;
 
                     if(hidden.get(ent.getKey()).contains(ent1.getKey()) && player.canSee(other)) {
@@ -180,93 +186,31 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
     @Override
     protected void playTickSound() {
-        for(UUID u : getPlayerIds()) {
-            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(pl != null) pl.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.HOSTILE, 1.0f, 1.0f);
+        for(MPlayer u : getPlayers()) {
+            ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
+            if(pl == null) continue;
+            pl.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.HOSTILE, 1.0f, 1.0f);
         }
     }
 
     @Override
     protected void playReleaseSound() {
-        for(UUID u : getPlayerIds()) {
-            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        for(MPlayer u : getPlayers()) {
+            ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
             if(pl != null) pl.playNotifySound(SoundEvents.ENDER_DRAGON_GROWL, SoundSource.HOSTILE, 1.0f, 1.0f);
         }
     }
 
     @Override
-    protected void broadcastTagMessage(UUID tagged, UUID tagger, DamageSource src) {
+    protected void setupPlayer(MPlayer u) {
 
-        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(tagged);
-        if(pl == null) return;
-
-        MComponent bc;
-
-        if(tagger != null) {
-
-            ServerPlayer attacker = MidnightCore.getServer().getPlayerList().getPlayer(tagger);
-            if(attacker == null) return;
-
-            bc = MComponent.createTextComponent("")
-                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
-                    .addChild(MComponent.createTextComponent(" was tagged by "))
-                    .addChild(MComponent.createTextComponent(attacker.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.SEEKER).getColor())))
-                    .addChild(MComponent.createTextComponent("! "))
-                    .addChild(getRemainsText());
-
-        } else if(src != null) {
-
-            net.minecraft.world.damagesource.DamageSource minecraft = ConversionUtil.convertDamageSource(src);
-
-            bc = MComponent.createTextComponent("")
-                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
-                    .addChild(MComponent.createTranslatableComponent("death.attack." + minecraft.msgId))
-                    .addChild(MComponent.createTextComponent("! "))
-                    .addChild(getRemainsText());
-
-        } else {
-
-            bc = MComponent.createTextComponent("")
-                    .addChild(MComponent.createTextComponent(pl.getName().getContents()).withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor())))
-                    .addChild(MComponent.createTextComponent(" was tagged! "))
-                    .addChild(getRemainsText());
-
-        }
-
-        broadcastMessage(bc);
-
-    }
-
-    private MComponent getRemainsText() {
-        int hiders = 0;
-        for(PositionType t : positions.values()) {
-            if(t == PositionType.HIDER) hiders++;
-        }
-
-        MComponent remain = MComponent.createTextComponent(hiders + "").withStyle(new MStyle().withColor(map.getData(PositionType.HIDER).getColor()));
-        remain.addChild(MComponent.createTextComponent(" "));
-        if(hiders == 1) {
-            remain.addChild(map.getData(PositionType.HIDER).getName());
-            remain.addChild(MComponent.createTextComponent(" remains!"));
-        } else {
-            remain.addChild(map.getData(PositionType.HIDER).getPluralName());
-            remain.addChild(MComponent.createTextComponent(" remain!"));
-        }
-
-        return remain;
-    }
-
-    @Override
-    protected void setupPlayer(UUID u) {
-
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-        if (player == null) return;
+        ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
+        if(player == null) return;
 
         if (u.equals(seeker)) {
-            setPosition(u, PositionType.MAIN_SEEKER);
 
-            List<UUID> pls = new ArrayList<>();
-            for(UUID uu : getPlayerIds()) {
+            List<MPlayer> pls = new ArrayList<>();
+            for(MPlayer uu : getPlayers()) {
                 if(uu.equals(u)) continue;
                 pls.add(uu);
             }
@@ -274,18 +218,9 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             currentMap.getSeekerSpawn().teleport(player);
 
         } else {
-            setPosition(u, PositionType.HIDER);
 
             currentMap.getHiderSpawn().teleport(player);
             hidden.put(u, new ArrayList<>());
-        }
-        AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(u, map, positions.get(u));
-
-        if (clazz != null) {
-            clazz.applyToPlayer(u, null);
-            classes.put(u, clazz);
-        } else {
-            HideAndSeekAPI.getLogger().warn("clazz is null!");
         }
 
         currentMap.onJoin(player);
@@ -293,9 +228,9 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void onPlayerRemoved(UUID u) {
+    protected void onPlayerRemoved(MPlayer u) {
 
-        ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
         if(pl != null) {
 
             currentMap.onLeave(pl);
@@ -307,26 +242,29 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void broadcastMessage(MComponent comp) {
+    protected void spawnFirework(Vec3d location, Color c1, boolean instant, boolean large, boolean flicker) {
 
-        Component cmp = me.m1dnightninja.midnightcore.fabric.util.ConversionUtil.toMinecraftComponent(comp);
-
-        for(UUID u : lobby.getPlayerIds()) {
-
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
-            if(player == null) continue;
-
-            player.sendMessage(cmp, ChatType.SYSTEM, Util.NIL_UUID);
+        if(instant) {
+            FireworkUtil.spawnFireworkExplosion(
+                    Collections.singletonList(c1),
+                    Collections.singletonList(new Color(0xFFFFFF)),
+                    large ? FireworkRocketItem.Shape.LARGE_BALL : FireworkRocketItem.Shape.SMALL_BALL,
+                    new Location(currentMap.getWorld().dimension().location(), location.getX(), location.getY(), location.getZ(), 0.0f, 0.0f));
+        } else {
+            FireworkUtil.spawnFireworkEntity(
+                    Collections.singletonList(c1),
+                    Collections.singletonList(new Color(0xFFFFFF)),
+                    large ? FireworkRocketItem.Shape.LARGE_BALL : FireworkRocketItem.Shape.SMALL_BALL,
+                    new Location(currentMap.getWorld().dimension().location(), location.getX(), location.getY(), location.getZ(), 0.0f, 0.0f));
         }
-
     }
 
     @Override
     protected void broadcastVictorySound(PositionType winner) {
 
-        for(UUID u : lobby.getPlayerIds()) {
+        for(MPlayer u : lobby.getPlayers()) {
 
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
             if(player == null) continue;
 
             player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.HOSTILE, 1.0f, 1.3f);
@@ -335,32 +273,27 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void setPlayerSeeker(UUID u) {
+    protected boolean onPositionChanged(MPlayer u, PositionType oldType, PositionType newType) {
 
-        super.setPlayerSeeker(u);
+        HideAndSeekRoleUpdatedEvent event = new HideAndSeekRoleUpdatedEvent((FabricPlayer) u, lobby, this, oldType, newType);
+        Event.invoke(event);
 
-        ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        if(event.isCancelled()) {
+
+            return false;
+        }
+
+        return super.onPositionChanged(u, oldType, newType);
+    }
+
+    @Override
+    protected void onTagged(MPlayer u, MPlayer tagger, PositionType newRole) {
+
+        ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
         if(player == null) return;
-
-        AbstractClass clazz = null;
-        if(classes.containsKey(player.getUUID())) {
-            clazz = classes.get(player.getUUID()).getEquivalent(PositionType.SEEKER);
-        }
-
-        if(clazz == null) clazz = HideAndSeekAPI.getInstance().getRegistry().chooseClass(player.getUUID(), map, PositionType.SEEKER);
-
-        if(clazz != null) {
-            clazz.applyToPlayer(player.getUUID(), null);
-            classes.put(player.getUUID(), clazz);
-        }
-
-        Location loc = Location.getEntityLocation(player);
 
         currentMap.removeFromTeam(player.getGameProfile().getName());
         currentMap.addToTeam(player.getGameProfile().getName(), PositionType.SEEKER);
-
-        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(map.getData(PositionType.SEEKER).getColor()), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.LARGE_BALL, loc);
-        FireworkUtil.spawnFireworkExplosion(Collections.singletonList(new Color("FFFFFF")), Collections.singletonList(new Color("FFFFFF")), FireworkRocketItem.Shape.SMALL_BALL, loc);
 
     }
 }

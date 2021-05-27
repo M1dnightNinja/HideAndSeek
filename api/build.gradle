@@ -5,6 +5,8 @@ repositories {
 dependencies {
     compileOnly("me.m1dnightninja.midnightcore:api:1.0-latest")
     compileOnly("me.m1dnightninja.skinsetter:api:1.0-latest")
+    compileOnly("me.m1dnightninja.midnightmenus:api:1.0-latest")
+    compileOnly("me.m1dnightninja.midnightitems:api:1.0-latest")
 }
 
 

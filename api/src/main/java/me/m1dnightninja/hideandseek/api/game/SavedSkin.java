@@ -5,14 +5,14 @@ import me.m1dnightninja.midnightcore.api.module.skin.Skin;
 
 import java.util.UUID;
 
-public class SkinOption {
+public class SavedSkin {
 
     private final String id;
     private final Skin skin;
 
     private String display;
 
-    public SkinOption(String id, Skin skin) {
+    public SavedSkin(String id, Skin skin) {
         this.id = id;
         this.skin = skin;
         this.display = id;
@@ -32,7 +32,7 @@ public class SkinOption {
 
     public void setDisplayName(String s) { this.display = s; }
 
-    public static SkinOption parse(ConfigSection sec) {
+    public static SavedSkin parse(ConfigSection sec) {
 
         String id = sec.getString("id");
 
@@ -40,7 +40,7 @@ public class SkinOption {
         String b64 = sec.getString("b64");
         String sig = sec.getString("sig");
 
-        SkinOption out = new SkinOption(id, new Skin(UUID.fromString(uid), b64, sig));
+        SavedSkin out = new SavedSkin(id, new Skin(UUID.fromString(uid), b64, sig));
 
         if(sec.has("name", String.class)) {
             out.display = sec.getString("name");

@@ -1,8 +1,10 @@
-package me.m1dnightninja.hideandseek.api.game;
+package me.m1dnightninja.hideandseek.api.core;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.game.DamageSource;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
@@ -13,12 +15,12 @@ public abstract class AbstractSession {
 
     private final UUID sessionId = UUID.randomUUID();
 
-    protected final List<UUID> players = new ArrayList<>();
+    protected final List<MPlayer> players = new ArrayList<>();
     private final List<SessionCallback> callbacks = new ArrayList<>();
 
     private boolean shutdown = false;
 
-    public final boolean addPlayer(UUID u) {
+    public final boolean addPlayer(MPlayer u) {
 
         if(players.contains(u) || !shouldAddPlayer(u)) return false;
 
@@ -34,7 +36,7 @@ public abstract class AbstractSession {
         return true;
     }
 
-    public final void removePlayer(UUID u) {
+    public final void removePlayer(MPlayer u) {
 
         if(!players.contains(u)) return;
 
@@ -60,7 +62,7 @@ public abstract class AbstractSession {
         callbacks.add(cb);
     }
 
-    public List<UUID> getPlayerIds() {
+    public List<MPlayer> getPlayers() {
         return new ArrayList<>(players);
     }
 
@@ -69,8 +71,8 @@ public abstract class AbstractSession {
     }
 
     public final boolean isInSession(UUID u) {
-        for(UUID u1 : players) {
-            if(u.equals(u1)) return true;
+        for(MPlayer u1 : players) {
+            if(u.equals(u1.getUUID())) return true;
         }
         return false;
     }
@@ -100,17 +102,23 @@ public abstract class AbstractSession {
         onShutdown();
     }
 
-    protected abstract boolean shouldAddPlayer(UUID u);
+    protected abstract boolean shouldAddPlayer(MPlayer u);
 
-    protected abstract void onPlayerAdded(UUID u);
-    protected abstract void onPlayerRemoved(UUID u);
+    protected abstract void onPlayerAdded(MPlayer u);
+    protected abstract void onPlayerRemoved(MPlayer u);
 
-    protected abstract void broadcastMessage(MComponent comp);
+    public void broadcastMessage(MComponent comp) {
+
+        for(MPlayer pl : players) {
+
+            pl.sendMessage(comp);
+        }
+    }
 
     protected abstract void onShutdown();
 
     public abstract void onTick();
-    public abstract void onDamaged(UUID u, UUID damager, DamageSource src, float amount);
+    public abstract void onDamaged(MPlayer u, MPlayer damager, DamageSource src, float amount);
 
     public interface SessionCallback {
         void onShutdown();

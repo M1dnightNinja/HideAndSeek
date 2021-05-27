@@ -5,19 +5,24 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.m1dnightninja.hideandseek.api.*;
+import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.game.EditingSession;
 import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.hideandseek.fabric.game.LobbySession;
 import me.m1dnightninja.hideandseek.fabric.game.Map;
+import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.inventory.AbstractInventoryGUI;
 import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.module.skin.Skin;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
-import me.m1dnightninja.midnightcore.fabric.api.InventoryGUI;
+import me.m1dnightninja.midnightcore.fabric.api.PermissionHelper;
+import me.m1dnightninja.midnightcore.fabric.inventory.InventoryGUI;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -43,7 +48,7 @@ public class MainCommand {
                 .requires(context -> hasPermission(context, "hideandseek.command.join"))
                 .executes(context -> joinCommand(context, null, null))
                 .then(Commands.argument("lobby", StringArgumentType.word())
-                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getLobbyNames(HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(context.getSource().getPlayerOrException().getUUID())), builder))
+                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getLobbyNames(HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(context.getSource().getPlayerOrException().getUUID()))), builder))
                     .executes(context -> joinCommand(context, context.getArgument("lobby", String.class), null))
                     .then(Commands.argument("players", EntityArgument.players())
                         .requires(context -> hasPermission(context, "hideandseek.command.join.others"))
@@ -80,7 +85,7 @@ public class MainCommand {
             .then(Commands.literal("edit")
                 .requires(context -> hasPermission(context, "hideandseek.command.edit"))
                 .then(Commands.argument("map", StringArgumentType.word())
-                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getEditableMapNames(context.getSource().getPlayerOrException().getUUID()), builder))
+                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(HideAndSeekAPI.getInstance().getSessionManager().getEditableMapNames(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(context.getSource().getPlayerOrException().getUUID())), builder))
                     .executes(context -> editCommand(context, context.getArgument("map", String.class), Collections.singletonList(context.getSource().getPlayerOrException())))
                     .then(Commands.argument("players", EntityArgument.players())
                         .requires(context -> hasPermission(context, "hideandseek.command.edit.others"))
@@ -102,8 +107,7 @@ public class MainCommand {
 
     private boolean hasPermission(CommandSourceStack st, String perm) {
 
-        return true;
-        //return st.hasPermission(2) || PermissionHelper.check(st, perm);
+        return PermissionHelper.checkOrOp(st, perm, 2);
     }
 
     private int joinCommand(CommandContext<CommandSourceStack> context, String lobby, List<ServerPlayer> players) {
@@ -125,7 +129,9 @@ public class MainCommand {
                 final ServerPlayer player = sender;
                 if (sender == null) return 0;
 
-                List<Lobby> lobbies = HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(player.getUUID());
+                MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID());
+
+                List<Lobby> lobbies = HideAndSeekAPI.getInstance().getSessionManager().getOpenLobbies(pl);
 
                 if (lobbies.size() == 0) {
                     context.getSource().sendFailure(new TextComponent("There are no open lobbies!"));
@@ -147,7 +153,7 @@ public class MainCommand {
                     index++;
                 }
 
-                gui.open(player.getUUID(), 0);
+                gui.open(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID()), 0);
 
             } catch(Exception ex) {
                 ex.printStackTrace();
@@ -161,7 +167,7 @@ public class MainCommand {
             return 0;
         }
 
-        if(sender != null && !lby.canAccess(sender.getUUID())) {
+        if(sender != null && !lby.canAccess(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(sender.getUUID()))) {
             context.getSource().sendFailure(new TextComponent("That is not a valid lobby!"));
             return 0;
         }
@@ -174,7 +180,7 @@ public class MainCommand {
         }
 
         for(ServerPlayer player : players) {
-            if(!sess.addPlayer(player.getUUID())) {
+            if(!sess.addPlayer(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID()))) {
                 context.getSource().sendSuccess(new TextComponent("Unable to add ").append(player.getDisplayName()).append(" to the lobby!").setStyle(Style.EMPTY.withColor(ChatFormatting.RED)), false);
             }
         }
@@ -194,11 +200,14 @@ public class MainCommand {
         }
 
         for(ServerPlayer player : players) {
-            AbstractSession sess = HideAndSeekAPI.getInstance().getSessionManager().getSession(player.getUUID());
+
+            MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID());
+
+            AbstractSession sess = HideAndSeekAPI.getInstance().getSessionManager().getSession(pl);
             if(sess == null) {
                 context.getSource().sendFailure(new TextComponent("Unable to remove ").append(player.getDisplayName()).append(" from their session!"));
             } else {
-                sess.removePlayer(player.getUUID());
+                sess.removePlayer(pl);
             }
         }
 
@@ -217,7 +226,8 @@ public class MainCommand {
                 return 0;
             }
 
-            AbstractSession sess = HideAndSeekAPI.getInstance().getSessionManager().getSession(sender.getUUID());
+            MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(sender.getUUID());
+            AbstractSession sess = HideAndSeekAPI.getInstance().getSessionManager().getSession(pl);
 
             if (!(sess instanceof AbstractLobbySession)) {
                 context.getSource().sendFailure(new TextComponent("You are not in a lobby!"));
@@ -235,7 +245,7 @@ public class MainCommand {
                 }
             }
 
-            ((AbstractLobbySession) sess).startGame(seeker, mp);
+            ((AbstractLobbySession) sess).startGame(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(seeker), mp);
         } catch(Exception ex) {
             ex.printStackTrace();
         }
@@ -259,7 +269,8 @@ public class MainCommand {
         Entity ent = context.getSource().getEntity();
 
         AbstractMap mp = HideAndSeekAPI.getInstance().getRegistry().getMap(map);
-        if(mp == null || (ent != null && !mp.canEdit(ent.getUUID()))) {
+        if(mp == null || (ent != null && !mp.canEdit(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(ent.getUUID())))) {
+
             context.getSource().sendFailure(new TextComponent("That is not a valid map!"));
             return 0;
         }
@@ -268,7 +279,7 @@ public class MainCommand {
         HideAndSeekAPI.getInstance().getSessionManager().startSession(sess);
 
         for(ServerPlayer player : players) {
-            if(!sess.addPlayer(player.getUUID())) {
+            if(!sess.addPlayer(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID()))) {
                 context.getSource().sendFailure(new TextComponent("Unable to add ").append(player.getDisplayName()).append(" to the editing session!"));
             }
         }
@@ -285,7 +296,7 @@ public class MainCommand {
             int current = 0;
             for (AbstractMap m : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
                 for (PositionType tp : PositionType.values()) {
-                    if (m.getData(tp).getClasses().size() > 1) {
+                    if (m.getData(tp).getPlayerClasses(FabricPlayer.wrap(target)).size() > 1) {
 
                         mapsGui.setItem(Map.getDisplayStack(m), current, (type, user) -> {
 
@@ -323,7 +334,7 @@ public class MainCommand {
                 }
             });
 
-            gui.open(target.getUUID(), 0);
+            gui.open(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(target.getUUID()), 0);
 
         } catch(Exception ex) {
             ex.printStackTrace();
@@ -333,20 +344,20 @@ public class MainCommand {
 
     }
 
-    private void openMapClassGui(UUID user, AbstractMap map, PositionType type) {
+    private void openMapClassGui(MPlayer user, AbstractMap map, PositionType type) {
 
         InventoryGUI gui = new InventoryGUI(MComponent.createTextComponent("Select a Class"));
 
         int i = 0;
-        for(AbstractClass clazz : map.getData(type).getClasses()) {
+        for(AbstractClass clazz : map.getData(type).getPlayerClasses(user)) {
 
             Skin s = null;
             if(clazz.getSkins().size() > 0) {
-                s = clazz.getSkins().get(0).getSkin();
+                s = HideAndSeekAPI.getInstance().getRegistry().getSkin(clazz.getSkins().get(0)).getSkin();
             }
 
             MItemStack is = MItemStack.Builder.headWithSkin(s).withName(MComponent.createTextComponent("").withStyle(MStyle.ITEM_BASE).addChild(clazz.getName())).build();
-            gui.setItem(is, i, (ctype, user1) -> HideAndSeekAPI.getInstance().getRegistry().setPreferredClass(user1, map, type, clazz));
+            gui.setItem(is, i, (ctype, user1) -> HideAndSeekAPI.getInstance().getRegistry().setPreferredClass(user1.getUUID(), map, type, clazz));
             i++;
 
         }

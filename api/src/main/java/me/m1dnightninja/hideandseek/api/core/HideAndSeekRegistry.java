@@ -8,6 +8,7 @@ import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.IPlayerDataModule;
 import me.m1dnightninja.midnightcore.api.module.skin.Skin;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,7 +20,7 @@ public class HideAndSeekRegistry {
     private final HashMap<String, AbstractMap> maps = new HashMap<>();
     private final HashMap<String, Lobby> lobbies = new HashMap<>();
     private final HashMap<String, AbstractClass> classes = new HashMap<>();
-    private final HashMap<String, SkinOption> skins = new HashMap<>();
+    private final HashMap<String, SavedSkin> skins = new HashMap<>();
     private final HashMap<String, GameType> gameTypes = new HashMap<>();
 
     private final HashMap<UUID, HashMap<AbstractMap, HashMap<PositionType, AbstractClass>>> preferredClasses = new HashMap<>();
@@ -60,8 +61,11 @@ public class HideAndSeekRegistry {
         classes.put(clazz.getId(), clazz);
     }
 
-    public void registerSkin(SkinOption skin) {
+    public void registerSkin(SavedSkin skin) {
         if(skins.containsKey(skin.getId())) return;
+        if(skin.getSkin() == null) {
+            HideAndSeekAPI.getLogger().warn("Attempt to register null skin!");
+        }
         skins.put(skin.getId(), skin);
     }
 
@@ -84,7 +88,7 @@ public class HideAndSeekRegistry {
     }
 
     private boolean checked = false;
-    public SkinOption getSkin(String id) {
+    public SavedSkin getSkin(String id) {
 
         if(checked) {
             checked = false;
@@ -92,11 +96,13 @@ public class HideAndSeekRegistry {
         }
         checked = true;
 
-        SkinOption s = skins.get(id);
+        SavedSkin s = skins.get(id);
 
         if(s == null && skinSetterPresent) {
             Skin s1 = SkinSetterIntegration.getSkin(id);
-            s = new SkinOption(id, s1);
+            if(s1 == null) return null;
+
+            s = new SavedSkin(id, s1);
         }
 
         checked = false;
@@ -120,7 +126,7 @@ public class HideAndSeekRegistry {
         return new ArrayList<>(classes.values());
     }
 
-    public List<SkinOption> getSkins() {
+    public List<SavedSkin> getSkins() {
         return new ArrayList<>(skins.values());
     }
 
@@ -151,18 +157,18 @@ public class HideAndSeekRegistry {
         return preferredClasses.get(u).get(map).get(type);
     }
 
-    public AbstractClass chooseClass(UUID u, AbstractMap map, PositionType type) {
+    public AbstractClass chooseClass(MPlayer u, AbstractMap map, PositionType type) {
 
-        AbstractClass out = getPreferredClass(u, map, type);
+        AbstractClass out = getPreferredClass(u.getUUID(), map, type);
         if(out == null) {
-            out = map.chooseRandomClass(type);
+            out = map.chooseRandomClass(u, type);
         }
 
         return out;
     }
 
 
-    public List<Lobby> getLobbies(UUID u) {
+    public List<Lobby> getLobbies(MPlayer u) {
 
         if(u == null) return getLobbies();
 

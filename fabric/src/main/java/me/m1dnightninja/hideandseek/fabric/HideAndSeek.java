@@ -1,5 +1,6 @@
 package me.m1dnightninja.hideandseek.fabric;
 
+import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.command.MainCommand;
 import me.m1dnightninja.hideandseek.fabric.game.*;
@@ -13,16 +14,18 @@ import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigProvider;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.module.lang.PlaceholderSupplier;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.common.config.JsonConfigProvider;
 import me.m1dnightninja.midnightcore.common.config.JsonWrapper;
+import me.m1dnightninja.midnightcore.common.module.lang.LangProvider;
 import me.m1dnightninja.midnightcore.fabric.Logger;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.MidnightCoreModInitializer;
 import me.m1dnightninja.midnightcore.fabric.api.event.*;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.module.lang.LangModule;
-import me.m1dnightninja.midnightcore.fabric.module.lang.LangProvider;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +35,6 @@ import org.apache.logging.log4j.LogManager;
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.UUID;
 
 public class HideAndSeek implements MidnightCoreModInitializer {
 
@@ -82,7 +84,8 @@ public class HideAndSeek implements MidnightCoreModInitializer {
 
         if(!langFolder.exists()) return;
 
-        if(langFolder.listFiles().length == 0) {
+        File[] files = langFolder.listFiles();
+        if(files == null || files.length == 0) {
 
             File f = new File(langFolder, "en_us.json");
             new JsonWrapper(f).save();
@@ -105,23 +108,23 @@ public class HideAndSeek implements MidnightCoreModInitializer {
         loadConfig();
 
         Event.register(PlayerDisconnectEvent.class, this, event -> {
-            AbstractSession sess = api.getSessionManager().getSession(event.getPlayer().getUUID());
-            if(sess != null) sess.removePlayer(event.getPlayer().getUUID());
+            AbstractSession sess = api.getSessionManager().getSession(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(event.getPlayer().getUUID()));
+            if(sess != null) sess.removePlayer(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(event.getPlayer().getUUID()));
         });
 
         Event.register(EntityDamageEvent.class, this, event -> {
             if(!(event.getEntity() instanceof ServerPlayer)) return;
 
-            UUID damager = null;
+            ServerPlayer damager = null;
             if(event.getSource().getEntity() instanceof ServerPlayer) {
-                damager = event.getSource().getEntity().getUUID();
+                damager = (ServerPlayer) event.getSource().getEntity();
             }
 
-            event.setCancelled(api.getSessionManager().onDamaged(event.getEntity().getUUID(), damager, ConversionUtil.convertDamageSource(event.getSource()), event.getAmount()));
+            event.setCancelled(api.getSessionManager().onDamaged(FabricPlayer.wrap((ServerPlayer) event.getEntity()), damager == null ? null : FabricPlayer.wrap(damager), ConversionUtil.convertDamageSource(event.getSource()), event.getAmount()));
         });
 
         Event.register(PlayerFoodLevelChangeEvent.class, this, event -> {
-            if(event.getNewFoodLevel() < event.getPreviousFoodLevel() && api.getSessionManager().getSession(event.getPlayer().getUUID()) != null) {
+            if(event.getNewFoodLevel() < event.getPreviousFoodLevel() && api.getSessionManager().getSession(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(event.getPlayer().getUUID())) != null) {
                 event.setCancelled(true);
             }
         });
@@ -134,19 +137,14 @@ public class HideAndSeek implements MidnightCoreModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> api.getSessionManager().shutdownAll());
     }
 
-
     public DimensionManager getDimensionManager() {
         return dimensionManager;
     }
 
-    public LangProvider getLangProvider() {
-        return langProvider;
-    }
-
     private void loadGameModes() {
-        api.getRegistry().registerGameType(new GameType("classic", langProvider.getMessage("gamemode.classic", (UUID) null)) {
+        api.getRegistry().registerGameType(new GameType("classic", langProvider.getMessage("gamemode.classic", (MPlayer) null)) {
             @Override
-            public AbstractGameInstance create(AbstractLobbySession lobby, UUID player, AbstractMap map) {
+            public AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, AbstractMap map) {
                 return new ClassicGameMode(lobby, player, map);
             }
         });
@@ -182,7 +180,7 @@ public class HideAndSeek implements MidnightCoreModInitializer {
             if(sec.has("skins", List.class)) {
                 for(Object o : sec.get("skins", List.class)) {
                     if(!(o instanceof ConfigSection)) continue;
-                    api.getRegistry().registerSkin(SkinOption.parse((ConfigSection) o));
+                    api.getRegistry().registerSkin(SavedSkin.parse((ConfigSection) o));
                 }
             }
         }
@@ -201,7 +199,9 @@ public class HideAndSeek implements MidnightCoreModInitializer {
 
         if(mapsFolder.exists() && mapsFolder.isDirectory()) {
 
-            for(File f : mapsFolder.listFiles()) {
+            File[] files = mainConfig.listFiles();
+
+            if(files != null) for(File f : files) {
                 if(!f.isDirectory()) continue;
 
                 File config = new File(f, "map.json");

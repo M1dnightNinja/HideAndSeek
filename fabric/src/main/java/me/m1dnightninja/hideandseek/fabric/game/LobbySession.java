@@ -5,9 +5,11 @@ import me.m1dnightninja.hideandseek.api.game.AbstractLobbySession;
 import me.m1dnightninja.hideandseek.api.game.DamageSource;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.module.ISavePointModule;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
+import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import me.m1dnightninja.midnightcore.fabric.util.ConversionUtil;
 import net.minecraft.Util;
 import net.minecraft.core.Registry;
@@ -17,8 +19,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-
-import java.util.UUID;
 
 public class LobbySession extends AbstractLobbySession {
 
@@ -42,15 +42,15 @@ public class LobbySession extends AbstractLobbySession {
     }
 
     @Override
-    protected boolean shouldAddPlayer(UUID u) {
+    protected boolean shouldAddPlayer(MPlayer u) {
         return true;
     }
 
     @Override
-    protected void onPlayerAdded(UUID u) {
+    protected void onPlayerAdded(MPlayer u) {
         super.onPlayerAdded(u);
 
-        ServerPlayer ent = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        ServerPlayer ent = ((FabricPlayer) u).getMinecraftPlayer();
 
         if(ent == null) {
             removePlayer(u);
@@ -63,7 +63,7 @@ public class LobbySession extends AbstractLobbySession {
     }
 
     @Override
-    public void onDamaged(UUID u, UUID damager, DamageSource damageSource, float amount) {
+    public void onDamaged(MPlayer u, MPlayer damager, DamageSource damageSource, float amount) {
 
         if(isRunning()) {
 
@@ -71,7 +71,7 @@ public class LobbySession extends AbstractLobbySession {
 
         } else {
 
-            ServerPlayer player = MidnightCore.getServer().getPlayerList().getPlayer(u);
+            ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
             if (player == null) return;
 
             if (damageSource == DamageSource.VOID) {
@@ -85,8 +85,8 @@ public class LobbySession extends AbstractLobbySession {
 
         Component comp = ConversionUtil.toMinecraftComponent(message);
 
-        for (UUID u : getPlayerIds()) {
-            ServerPlayer pl = MidnightCore.getServer().getPlayerList().getPlayer(u);
+        for (MPlayer u : getPlayers()) {
+            ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
             if (pl == null) continue;
             pl.sendMessage(comp, ChatType.SYSTEM, Util.NIL_UUID);
         }

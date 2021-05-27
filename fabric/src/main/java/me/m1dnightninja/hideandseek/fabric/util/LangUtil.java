@@ -1,12 +1,10 @@
 package me.m1dnightninja.hideandseek.fabric.util;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.api.game.Lobby;
-import me.m1dnightninja.hideandseek.api.game.AbstractLobbySession;
-import me.m1dnightninja.hideandseek.api.game.AbstractMap;
-import me.m1dnightninja.hideandseek.api.game.PositionData;
+import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.hideandseek.fabric.game.LobbySession;
 import me.m1dnightninja.midnightcore.api.module.lang.PlaceholderSupplier;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.fabric.module.lang.LangModule;
 
 public class LangUtil {
@@ -30,6 +28,18 @@ public class LangUtil {
         mod.registerInlinePlaceholderSupplier("hideandseek_map_seek_time", PlaceholderSupplier.create(AbstractMap.class, obj -> obj.getHideTime() + ""));
 
         mod.registerPlaceholderSupplier("hideandseek_map_name", PlaceholderSupplier.create(AbstractMap.class, AbstractMap::getName));
+        mod.registerPlaceholderSupplier("hideandseek_hider_name", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.HIDER).getName()));
+        mod.registerPlaceholderSupplier("hideandseek_hider_name_plural", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.HIDER).getPluralName()));
+        mod.registerPlaceholderSupplier("hideandseek_hider_name_proper", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.HIDER).getProperName()));
+        mod.registerPlaceholderSupplier("hideandseek_seeker_name", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.SEEKER).getName()));
+        mod.registerPlaceholderSupplier("hideandseek_seeker_name_plural", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.SEEKER).getPluralName()));
+        mod.registerPlaceholderSupplier("hideandseek_seeker_name_proper", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.SEEKER).getProperName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_hider_name", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_HIDER).getName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_hider_name_plural", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_HIDER).getPluralName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_hider_name_proper", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_HIDER).getProperName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_seeker_name", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_SEEKER).getName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_seeker_name_plural", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_SEEKER).getPluralName()));
+        mod.registerPlaceholderSupplier("hideandseek_main_seeker_name_proper", PlaceholderSupplier.create(AbstractMap.class, map -> map.getData(PositionType.MAIN_SEEKER).getProperName()));
 
         mod.registerInlinePlaceholderSupplier("hideandseek_position_type", PlaceholderSupplier.create(PositionData.class, obj -> obj.getType().getId()));
         mod.registerInlinePlaceholderSupplier("hideandseek_position_color", PlaceholderSupplier.create(PositionData.class, obj -> obj.getColor().toHex()));
@@ -38,31 +48,30 @@ public class LangUtil {
         mod.registerPlaceholderSupplier("hideandseek_position_name_plural", PlaceholderSupplier.create(PositionData.class, PositionData::getPluralName));
         mod.registerPlaceholderSupplier("hideandseek_position_name_proper", PlaceholderSupplier.create(PositionData.class, PositionData::getProperName));
 
-        mod.registerInlinePlaceholderSupplier("hideandseek_player_position_type", LangModule.playerOrUUID(obj -> {
-            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
-            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getType().getId();
+        mod.registerInlinePlaceholderSupplier("hideandseek_player_position_type", PlaceholderSupplier.create(MPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj)).getType().getId();
         }));
 
-        mod.registerInlinePlaceholderSupplier("hideandseek_player_position_color", LangModule.playerOrUUID(obj ->  {
-            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
-            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getColor().toHex();
+        mod.registerInlinePlaceholderSupplier("hideandseek_player_position_color", PlaceholderSupplier.create(MPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj)).getColor().toHex();
         }));
 
-        mod.registerPlaceholderSupplier("hideandseek_player_position_name", LangModule.playerOrUUID(obj ->  {
-            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
-            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getName();
+        mod.registerPlaceholderSupplier("hideandseek_player_position_name", PlaceholderSupplier.create(MPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj)).getName();
         }));
 
-        mod.registerPlaceholderSupplier("hideandseek_player_position_name_proper", LangModule.playerOrUUID(obj -> {
-            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
-            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getProperName();
+        mod.registerPlaceholderSupplier("hideandseek_player_position_name_proper", PlaceholderSupplier.create(MPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj)).getName();
         }));
 
-        mod.registerPlaceholderSupplier("hideandseek_player_position_name_plural", LangModule.playerOrUUID(obj -> {
-            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj.getUUID());
-            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj.getUUID())).getPluralName();
+        mod.registerPlaceholderSupplier("hideandseek_player_position_name_plural", PlaceholderSupplier.create(MPlayer.class, obj -> {
+            LobbySession sess = (LobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
+            return sess.getRunningGame().getMap().getData(sess.getRunningGame().getPosition(obj)).getName();
         }));
-
     }
 
 }

@@ -6,6 +6,7 @@ import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
@@ -95,9 +96,9 @@ public class Lobby {
         return permission;
     }
 
-    public boolean canAccess(UUID u) {
+    public boolean canAccess(MPlayer u) {
 
-        return permission == null || MidnightCoreAPI.getInstance().hasPermission(u, permission);
+        return permission == null || u.hasPermission(permission);
     }
 
     public void fromConfig(ConfigSection sec) {

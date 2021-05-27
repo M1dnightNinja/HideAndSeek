@@ -4,6 +4,7 @@ import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 import me.m1dnightninja.midnightcore.api.text.MStyle;
@@ -42,6 +43,8 @@ public abstract class AbstractMap {
 
     protected final List<DamageSource> resetSources = new ArrayList<>();
     protected final List<DamageSource> tagSources = new ArrayList<>();
+
+    protected final HashMap<DamageSource, String> customDeathMessages = new HashMap<>();
 
     protected float hiderRotation = 0;
     protected float seekerRotation = 0;
@@ -134,10 +137,12 @@ public abstract class AbstractMap {
         return clazz;
     }
 
-    public AbstractClass chooseRandomClass(PositionType type) {
+    public AbstractClass chooseRandomClass(MPlayer player, PositionType type) {
 
-        if(positionData.get(type).getClasses().size() == 0) return null;
-        return positionData.get(type).getClasses().get(HideAndSeekAPI.getInstance().getRandom().nextInt(positionData.get(type).getClasses().size()));
+        List<AbstractClass> classes = getData(type).getPlayerClasses(player);
+        if(classes.size() == 0) return null;
+
+        return classes.get(HideAndSeekAPI.getInstance().getRandom().nextInt(classes.size()));
     }
 
     public Collection<AbstractClass> getMapClasses() {
@@ -176,8 +181,18 @@ public abstract class AbstractMap {
 
     public String getResourcePackHash() { return resPackHash == null ? "" : resPackHash; }
 
+    public MComponent getDeathMessage(DamageSource source, MPlayer player, MPlayer damaged) {
 
-    public abstract boolean canEdit(UUID u);
+        if(customDeathMessages.containsKey(source)) {
+
+            return HideAndSeekAPI.getInstance().getLangProvider().getMessage(customDeathMessages.get(source), player, damaged);
+        }
+
+        return MComponent.createTranslatableComponent("death.attack." + source.getTranslateName());
+
+    }
+
+    public abstract boolean canEdit(MPlayer u);
 
 
     public void fromConfig(ConfigSection sec) {
@@ -293,6 +308,14 @@ public abstract class AbstractMap {
             }
 
             displayItem = MItemStack.Builder.of(MIdentifier.create("minecraft", "white_wool")).withName(name.copy().withStyle(name.getStyle().fill(MStyle.ITEM_BASE))).withLore(lore).build();
+        }
+
+        if(sec.has("death_messages", ConfigSection.class)) {
+            for(String key : sec.getSection("death_messages").getKeys()) {
+
+                DamageSource source = DamageSource.valueOf(key);
+                customDeathMessages.put(source, sec.getSection("death_messages").getString(key));
+            }
         }
 
     }
