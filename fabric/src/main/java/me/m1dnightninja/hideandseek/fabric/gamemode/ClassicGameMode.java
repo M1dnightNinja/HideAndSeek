@@ -2,9 +2,8 @@ package me.m1dnightninja.hideandseek.fabric.gamemode;
 
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.*;
-import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
-import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.hideandseek.fabric.event.HideAndSeekRoleUpdatedEvent;
 import me.m1dnightninja.hideandseek.fabric.game.MapInstance;
 import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
@@ -19,6 +18,7 @@ import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.network.protocol.game.*;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -35,7 +35,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
     private final boolean useAntiCheat;
 
-    public ClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, AbstractMap map) {
+    public ClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, Map map) {
         super(lobby, seeker, map);
 
         useAntiCheat = HideAndSeekAPI.getInstance().getMainSettings().isAntiCheatEnabled();
@@ -103,7 +103,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     public void onTick() {
         if(state == ClassicGameState.UNINITIALIZED) return;
 
-        for(Map.Entry<MPlayer, PositionType> ent : positions.entrySet()) {
+        for(java.util.Map.Entry<MPlayer, PositionType> ent : positions.entrySet()) {
 
             ServerPlayer player = ((FabricPlayer) ent.getKey()).getMinecraftPlayer();
             if(player == null) continue;
@@ -132,21 +132,21 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             }
 
             if(useAntiCheat && state != ClassicGameState.HIDING && positions.get(ent.getKey()).isSeeker()) {
-                for(Map.Entry<MPlayer, PositionType> ent1 : positions.entrySet()) {
+                for(java.util.Map.Entry<MPlayer, PositionType> ent1 : positions.entrySet()) {
                     if(ent1.getValue().isSeeker()) continue;
 
                     ServerPlayer other = ((FabricPlayer) ent1.getKey()).getMinecraftPlayer();
                     if(other == null) continue;
 
-                    if(hidden.get(ent.getKey()).contains(ent1.getKey()) && player.canSee(other)) {
+                    if(hidden.get(ent.getKey()).contains(ent1.getKey()) && player.hasLineOfSight(other)) {
                         hidden.get(ent.getKey()).remove(ent1.getKey());
                         player.connection.send(new ClientboundAddPlayerPacket(other));
                         player.connection.send(new ClientboundSetEntityDataPacket(other.getId(), other.getEntityData(), true));
                     }
 
-                    if(!hidden.get(ent.getKey()).contains(ent1.getKey()) && !player.canSee(other)) {
+                    if(!hidden.get(ent.getKey()).contains(ent1.getKey()) && !player.hasLineOfSight(other)) {
                         hidden.get(ent.getKey()).add(ent1.getKey());
-                        player.connection.send(new ClientboundRemoveEntitiesPacket(other.getId()));
+                        player.connection.send(new ClientboundRemoveEntityPacket(other.getId()));
                     }
 
                 }
@@ -157,9 +157,9 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     }
 
     @Override
-    protected void loadWorld(AbstractMap map, Runnable callback) {
+    protected void loadWorld(Map map, Runnable callback) {
 
-        HideAndSeek.getInstance().getDimensionManager().loadMapWorld(map, lobby.getLobby().getId(), lobby.getLobby().getId(), (world) -> {
+        HideAndSeekAPI.getInstance().getDimensionManager().loadMapWorld(map, lobby.getLobby().getId(), lobby.getLobby().getId(), (world) -> {
             if(world == null) {
                 shutdown();
                 return;
@@ -167,7 +167,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
             try {
 
-                currentMap = new MapInstance(this, map, world, true);
+                currentMap = new MapInstance(this, map, (ServerLevel) world, true);
             } catch (Throwable th) {
                 th.printStackTrace();
                 shutdown();
@@ -181,7 +181,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
     @Override
     protected void unloadWorld() {
         currentMap.clearTeams();
-        HideAndSeek.getInstance().getDimensionManager().unloadMapWorld(map, lobby.getLobby().getId(), false);
+        HideAndSeekAPI.getInstance().getDimensionManager().unloadMapWorld(map, lobby.getLobby().getId(), false);
     }
 
     @Override

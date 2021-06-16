@@ -1,7 +1,6 @@
 package me.m1dnightninja.hideandseek.api.game;
 
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
@@ -13,7 +12,7 @@ import me.m1dnightninja.midnightcore.api.text.MStyle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.function.Supplier;
 
 public class Lobby {
 
@@ -31,12 +30,12 @@ public class Lobby {
     protected int maxPlayers = 16;
 
     protected Color color = new Color(255,255,255);
-    protected GameType gameType;
+    protected Supplier<GameType> gameType;
 
     protected float rotation;
     protected String world;
 
-    protected final List<AbstractMap> maps = new ArrayList<>();
+    protected final List<Map> maps = new ArrayList<>();
 
     public Lobby(String id, Vec3d location) {
         this.id = id;
@@ -68,7 +67,7 @@ public class Lobby {
         return color;
     }
 
-    public GameType getGameType() {
+    public Supplier<GameType> getGameType() {
         return gameType;
     }
 
@@ -84,7 +83,7 @@ public class Lobby {
         return world;
     }
 
-    public List<AbstractMap> getMaps() {
+    public List<Map> getMaps() {
         return maps;
     }
 
@@ -102,6 +101,11 @@ public class Lobby {
     }
 
     public void fromConfig(ConfigSection sec) {
+
+        gameType = HideAndSeekAPI.getInstance().getRegistry().getGameType(sec.getString("game_mode"));
+        if (gameType == null) {
+            throw new IllegalStateException("There is no GameType called " + sec.getString("game_mode") + "!");
+        }
 
         if(sec.has("name", String.class)) {
             name = MComponent.Serializer.parse(sec.getString("name"));
@@ -130,10 +134,6 @@ public class Lobby {
             color = Color.parse(sec.getString("color"));
         } else if(sec.has("color", Number.class)) {
             color = new Color(sec.getInt("color"));
-        }
-
-        if(sec.has("game_mode", String.class)) {
-            gameType = HideAndSeekAPI.getInstance().getRegistry().getGameType(sec.getString("game_mode"));
         }
 
         if(sec.has("rotation", Number.class)) {

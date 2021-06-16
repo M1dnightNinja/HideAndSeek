@@ -65,7 +65,12 @@ public class PositionData {
         return classes;
     }
 
-    public void fromConfig(ConfigSection sec, AbstractMap map) {
+    public boolean canCustomize(MPlayer player) {
+
+        return getPlayerClasses(player).size() > 1;
+    }
+
+    public void fromConfig(ConfigSection sec, Map map) {
 
         if(sec.has("name", String.class)) {
             name = MComponent.Serializer.parse(sec.getString("name"));
@@ -104,16 +109,15 @@ public class PositionData {
                 }
             }
 
-            for(Object o : sec.get("classes", List.class)) {
+            for(String o : sec.getListFiltered("classes", String.class)) {
 
-                if(!(o instanceof String)) continue;
-
-                classes.add(tclasses.get(o));
+                AbstractClass clazz = tclasses.get(o);
+                if(clazz != null) classes.add(clazz);
             }
         }
     }
 
-    public static PositionData parse(ConfigSection sec, PositionType type, AbstractMap map) {
+    public static PositionData parse(ConfigSection sec, PositionType type, Map map) {
 
         PositionData dt = new PositionData(type);
         dt.fromConfig(sec, map);

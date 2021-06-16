@@ -5,7 +5,7 @@ plugins {
 
 configurations {
     shade
-    compile.extendsFrom shade
+    compileOnly.extendsFrom shade
 }
 
 repositories {
@@ -30,6 +30,8 @@ dependencies {
     compileOnly("me.m1dnightninja.midnightcore:common:1.0-latest")
     compileOnly("me.m1dnightninja.midnightcore:spigot:1.0-latest")
 
+    compileOnly('com.google.code.gson:gson:2.8.0')
+
     shade(project(":api"))
     shade(project(":common"))
 
@@ -42,14 +44,10 @@ processResources {
     ex.put("modid", project.ext.modid)
     ex.put("modname", project.ext.modname)
     ex.put("modclass", project.ext.modclass)
+    ex.put("minecraftVersion", project.ext.minecraftMajorVersion)
 
-    from(sourceSets.main.resources.srcDirs) {
-        include "plugin.yml"
+    filesMatching("plugin.yml") {
         expand(ex)
-    }
-
-    from(sourceSets.main.resources.srcDirs) {
-        exclude "plugin.yml"
     }
 }
 

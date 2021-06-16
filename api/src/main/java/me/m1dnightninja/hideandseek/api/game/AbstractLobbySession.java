@@ -18,14 +18,17 @@ public abstract class AbstractLobbySession extends AbstractSession {
     private AbstractTimer startTimer;
     private final AbstractCustomScoreboard scoreboard;
 
+    private final GameType cachedGameType;
+
     public AbstractLobbySession(Lobby lobby) {
         this.lobby = lobby;
+        this.cachedGameType = lobby.getGameType().get();
 
         scoreboard = MidnightCoreAPI.getInstance().createScoreboard(AbstractCustomScoreboard.generateRandomId(), MComponent.createTextComponent("HideAndSeek").withStyle(new MStyle().withColor(Color.fromRGBI(14)).withBold(true)));
 
         scoreboard.setLine(5, MComponent.createTextComponent("                         "));
         scoreboard.setLine(4, MComponent.createTextComponent("Lobby: ").addChild(lobby.getName()));
-        scoreboard.setLine(3, MComponent.createTextComponent("Game Mode: ").addChild(lobby.getGameType().getName()));
+        scoreboard.setLine(3, MComponent.createTextComponent("Game Mode: ").addChild(cachedGameType.getName()));
         scoreboard.setLine(2, MComponent.createTextComponent("                         "));
         scoreboard.setLine(1, MComponent.createTextComponent("Players: ").addChild(MComponent.createTextComponent(getPlayerCount() + " / " + lobby.getMaxPlayers()).withStyle(new MStyle().withColor(Color.fromRGBI(10)))));
 
@@ -67,19 +70,21 @@ public abstract class AbstractLobbySession extends AbstractSession {
 
     }
 
-    public void startGame(MPlayer seeker, AbstractMap map) {
+    public GameType getGameType() {
+        return cachedGameType;
+    }
+
+    public void startGame(MPlayer seeker, Map map) {
         if(startTimer != null) {
             startTimer.cancel();
         }
 
-        GameType type = lobby.getGameType();
-
-        if(type == null) {
+        if(cachedGameType == null) {
             shutdown();
             return;
         }
 
-        runningInstance = type.create(this, seeker, map);
+        runningInstance = cachedGameType.create(this, seeker, map);
         runningInstance.addCallback(this::shutdown);
         runningInstance.start();
     }

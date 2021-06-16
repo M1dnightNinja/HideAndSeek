@@ -15,7 +15,7 @@ dependencies {
     implementation("me.m1dnightninja.midnightcore:api:1.0-latest")
     implementation("me.m1dnightninja.midnightcore:common:1.0-latest")
 
-    compile project(":api")
+    compileOnly(project(":api"))
 }
 
 artifacts {

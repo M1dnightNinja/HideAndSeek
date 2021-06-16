@@ -1,7 +1,7 @@
-package me.m1dnightninja.hideandseek.fabric.game;
+package me.m1dnightninja.hideandseek.spigot.game;
 
-import me.m1dnightninja.hideandseek.api.game.AbstractClass;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
+import me.m1dnightninja.hideandseek.api.game.AbstractClass;
 import me.m1dnightninja.hideandseek.api.game.SavedSkin;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
@@ -9,25 +9,23 @@ import me.m1dnightninja.midnightcore.api.config.ConfigSerializer;
 import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.module.skin.ISkinModule;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
-import me.m1dnightninja.midnightcore.fabric.MidnightCore;
-import me.m1dnightninja.midnightcore.fabric.inventory.FabricItem;
-import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
-import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.item.ItemStack;
-import org.apache.commons.lang3.NotImplementedException;
+import me.m1dnightninja.midnightcore.spigot.inventory.SpigotItem;
+import me.m1dnightninja.midnightcore.spigot.player.SpigotPlayer;
+import me.m1dnightninja.midnightcore.spigot.util.ReflectionUtil;
+import org.apache.commons.lang.NotImplementedException;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class GameClass extends AbstractClass {
 
-    private final HashMap<MobEffect, Integer> effects = new HashMap<>();
+    private final HashMap<PotionEffectType, Integer> effects = new HashMap<>();
 
     public GameClass(String id) {
         super(id);
@@ -36,38 +34,55 @@ public class GameClass extends AbstractClass {
     @Override
     protected void executeCommand(String s) {
 
-        MidnightCore.getServer().getCommands().performCommand(MidnightCore.getServer().createCommandSourceStack(), s);
+        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), s);
     }
 
     @Override
     public void applyToPlayer(MPlayer uid) {
 
-        ServerPlayer player = ((FabricPlayer) uid).getMinecraftPlayer();
+        Player player = ((SpigotPlayer) uid).getSpigotPlayer();
         if(player == null) return;
 
-        player.removeAllEffects();
-        for(Map.Entry<MobEffect, Integer> ent : effects.entrySet()) {
-            player.addEffect(new MobEffectInstance(ent.getKey(), Integer.MAX_VALUE, ent.getValue(), true, false, false));
+        for(PotionEffect effect : player.getActivePotionEffects()) {
+            player.removePotionEffect(effect.getType());
+        }
+
+        for(Map.Entry<PotionEffectType, Integer> ent : effects.entrySet()) {
+            player.addPotionEffect(new PotionEffect(ent.getKey(), Integer.MAX_VALUE, ent.getValue(), true, false, false));
         }
 
         for(Map.Entry<String, MItemStack> ent : equipment.entrySet()) {
 
-            EquipmentSlot slot = EquipmentSlot.byName(ent.getKey());
-            if(slot == null) continue;
+            EquipmentSlot slot = EquipmentSlot.valueOf(ent.getKey());
 
-            ItemStack stack = ((FabricItem) ent.getValue().copy()).getMinecraftItem();
+            ItemStack stack = ((SpigotItem) ent.getValue().copy()).getBukkitStack();
 
-            if(slot.getType() == EquipmentSlot.Type.ARMOR) {
-                player.getInventory().armor.set(slot.getIndex(), stack);
-            } else if(slot == EquipmentSlot.OFFHAND) {
-                player.setItemInHand(InteractionHand.OFF_HAND, stack);
+            switch (slot) {
+                case HEAD:     player.getInventory().setHelmet(stack);
+                case CHEST:    player.getInventory().setChestplate(stack);
+                case LEGS:     player.getInventory().setLeggings(stack);
+                case FEET:     player.getInventory().setBoots(stack);
+            }
+
+            if(ReflectionUtil.MAJOR_VERISON <= 8) {
+
+                if(slot == EquipmentSlot.HAND) {
+                    player.getInventory().setItemInHand(stack);
+                }
+
             } else {
-                player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+
+                if(slot == EquipmentSlot.HAND) {
+                    player.getInventory().setItemInMainHand(stack);
+
+                }  else if(slot == EquipmentSlot.OFF_HAND) {
+                    player.getInventory().setItemInOffHand(stack);
+                }
             }
         }
 
         for(MItemStack is : items) {
-            player.getInventory().add(((FabricItem) is.copy()).getMinecraftItem());
+            player.getInventory().addItem(((SpigotItem) is.copy()).getBukkitStack());
         }
 
         SavedSkin skin = null;
@@ -80,7 +95,6 @@ public class GameClass extends AbstractClass {
         }
 
         executeCommands(CommandActivationPoint.SETUP, uid, null);
-
     }
 
     @Override
@@ -95,12 +109,11 @@ public class GameClass extends AbstractClass {
                 if(!(ele.getValue() instanceof Number)) return;
 
                 int amplifier = ((Number) ele.getValue()).intValue();
-                MobEffect eff = Registry.MOB_EFFECT.get(new ResourceLocation(ele.getKey()));
+                PotionEffectType eff = PotionEffectType.getByName(ele.getKey());
 
                 effects.put(eff, amplifier);
             }
         }
-
     }
 
     public static GameClass parse(ConfigSection conf) {
@@ -124,4 +137,5 @@ public class GameClass extends AbstractClass {
             throw new NotImplementedException("Serializing classes is not yet supported!");
         }
     };
+
 }

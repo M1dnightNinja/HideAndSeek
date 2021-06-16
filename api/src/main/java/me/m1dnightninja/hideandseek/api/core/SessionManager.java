@@ -4,6 +4,7 @@ import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.hideandseek.api.game.*;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,10 @@ public class SessionManager {
             if(sess.getPlayers().contains(u)) return sess;
         }
         return null;
+    }
+
+    public Iterable<AbstractSession> getSessions() {
+        return sessions;
     }
 
     public AbstractLobbySession getActiveSession(Lobby lobby) {
@@ -72,9 +77,30 @@ public class SessionManager {
 
     public List<String> getEditableMapNames(MPlayer u) {
         List<String> out = new ArrayList<>();
-        for(AbstractMap map : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
+        for(Map map : HideAndSeekAPI.getInstance().getRegistry().getMaps()) {
             if(u == null || map.canEdit(u)) out.add(map.getId());
         }
+        return out;
+    }
+
+    public List<String> getLobbyMapNames(MPlayer u) {
+        if(u == null) {
+            return getEditableMapNames(null);
+        }
+
+        List<String> out = new ArrayList<>();
+        AbstractSession sess = getSession(u);
+
+        if(!(sess instanceof AbstractLobbySession)) {
+
+            return getEditableMapNames(null);
+        }
+
+        Lobby lobby = ((AbstractLobbySession) sess).getLobby();
+        for(Map map : lobby.getMaps()) {
+            out.add(map.getId());
+        }
+
         return out;
     }
 

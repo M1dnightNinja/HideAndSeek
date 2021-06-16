@@ -1,8 +1,8 @@
 package me.m1dnightninja.hideandseek.fabric.manager;
 
-import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.AbstractDimensionManager;
+import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
-import me.m1dnightninja.hideandseek.common.AbstractDimensionManager;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.fabric.api.WorldCreator;
 import me.m1dnightninja.midnightcore.fabric.dimension.EmptyGenerator;
@@ -21,7 +21,7 @@ import java.io.IOException;
 public class DimensionManager extends AbstractDimensionManager<ServerLevel> {
 
     @Override
-    protected void doWorldLoad(AbstractMap map, String name, String folderName, InternalCallback<ServerLevel> callback) {
+    protected void doWorldLoad(Map map, String name, String folderName, InternalCallback<ServerLevel> callback) {
 
         File newDir = new File(map.getMapFolder(), folderName);
 

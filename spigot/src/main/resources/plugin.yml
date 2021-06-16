@@ -1,0 +1,9 @@
+main: me.m1dnightninja.hideandseek.spigot.HideAndSeek
+name: HideAndSeek
+version: "${version}"
+author: M1dnight_Ninja
+depend: [ MidnightCore ]
+softdepend: [ SkinSetter ]
+commands:
+  has:
+    description: Main HideAndSeek Command

@@ -13,7 +13,7 @@ public abstract class GameType {
         this.name = name;
     }
 
-    public abstract AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, AbstractMap map);
+    public abstract AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, Map map);
 
     public String getId() {
         return id;

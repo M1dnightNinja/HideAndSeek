@@ -100,7 +100,7 @@ public abstract class AbstractGameInstance extends AbstractSession {
     protected abstract boolean onPositionChanged(MPlayer u, PositionType oldRole, PositionType newRole);
     protected abstract void onTagged(MPlayer u, MPlayer tagger, PositionType newRole);
 
-    public abstract AbstractMap getMap();
+    public abstract Map getMap();
 
     @Override
     protected void onPlayerRemoved(MPlayer u) {

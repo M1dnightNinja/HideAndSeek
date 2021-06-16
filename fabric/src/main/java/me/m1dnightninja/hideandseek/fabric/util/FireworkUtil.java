@@ -8,6 +8,7 @@ import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.item.FireworkRocketItem;
 import net.minecraft.world.item.ItemStack;
@@ -23,7 +24,7 @@ public final class FireworkUtil {
 
         ent.level.broadcastEntityEvent(ent, (byte) 17);
         ((AccessorFireworkRocketEntity) ent).callExplode();
-        ent.remove();
+        ent.remove(Entity.RemovalReason.KILLED);
     }
 
     public static FireworkRocketEntity spawnFireworkEntity(List<Color> color, List<Color> fadeColor, FireworkRocketItem.Shape type, Location location) {

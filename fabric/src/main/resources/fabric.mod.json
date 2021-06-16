@@ -22,7 +22,7 @@
   "depends": {
     "fabricloader": ">=0.11.2",
     "fabric": "*",
-    "minecraft": "1.16.x",
+    "minecraft": "${minecraftVersion}.x",
     "midnightcore": ">=1.0.0"
   }
 }

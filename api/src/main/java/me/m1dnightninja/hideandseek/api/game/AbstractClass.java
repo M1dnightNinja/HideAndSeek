@@ -61,7 +61,7 @@ public abstract class AbstractClass {
     public void updateEquivalencies() {
         equivalencies.clear();
 
-        for(Map.Entry<PositionType, String> ent : tempEquivalencies.entrySet()) {
+        for(HashMap.Entry<PositionType, String> ent : tempEquivalencies.entrySet()) {
             AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().getClass(ent.getValue());
             equivalencies.put(ent.getKey(), clazz);
         }
@@ -131,7 +131,7 @@ public abstract class AbstractClass {
         }
 
         if(sec.has("equivalencies", ConfigSection.class)) {
-            for(Map.Entry<String, Object> ent : sec.get("equivalencies", ConfigSection.class).getEntries().entrySet()) {
+            for(HashMap.Entry<String, Object> ent : sec.get("equivalencies", ConfigSection.class).getEntries().entrySet()) {
                 if(!(ent.getValue() instanceof String)) continue;
 
                 for(PositionType t : PositionType.values()) {

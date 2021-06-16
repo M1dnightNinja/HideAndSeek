@@ -2,7 +2,7 @@ package me.m1dnightninja.hideandseek.common;
 
 import me.m1dnightninja.hideandseek.api.*;
 import me.m1dnightninja.hideandseek.api.game.*;
-import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
@@ -11,7 +11,6 @@ import me.m1dnightninja.midnightcore.api.module.lang.CustomPlaceholderInline;
 import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.*;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.*;
 
@@ -24,7 +23,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
     // Initial Seeker and Map
     protected final MPlayer seeker;
-    protected final AbstractMap map;
+    protected final Map map;
 
     // Keep track of locations and who to teleport
     protected final List<MPlayer> toTeleport = new ArrayList<>();
@@ -39,7 +38,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     private AbstractTimer hiderTimer;
 
     // Constructor
-    protected AbstractClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, AbstractMap map) {
+    protected AbstractClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, Map map) {
         super(lobby);
 
         this.seeker = seeker == null ? getPlayers().get(HideAndSeekAPI.getInstance().getRandom().nextInt(getPlayerCount())) : seeker;
@@ -58,7 +57,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
     // Allow other classes to obtain the current map
     @Override
-    public AbstractMap getMap() {
+    public Map getMap() {
         return map;
     }
 
@@ -98,7 +97,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
                 roleName.clearStyle();
 
                 // Create and send a scoreboard
-                AbstractCustomScoreboard sb = MidnightCoreAPI.getInstance().createScoreboard(RandomStringUtils.random(15, true, true), MComponent.createTextComponent("HideAndSeek").withStyle(new MStyle().withColor(Color.fromRGBI(14)).withBold(true)));
+                AbstractCustomScoreboard sb = MidnightCoreAPI.getInstance().createScoreboard(AbstractCustomScoreboard.generateRandomId(), MComponent.createTextComponent("HideAndSeek").withStyle(new MStyle().withColor(Color.fromRGBI(14)).withBold(true)));
 
                 sb.setLine(7, MComponent.createTextComponent("                         "));
                 sb.setLine(6, MComponent.createTextComponent("Phase: ").addChild(HideAndSeekAPI.getInstance().getLangProvider().getMessage("phase.hiding", u, map.getData(PositionType.HIDER))));
@@ -183,7 +182,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         mainSeekerTimer.start();
 
         // Update all scoreboards
-        for(Map.Entry<MPlayer,AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
+        for(java.util.Map.Entry<MPlayer,AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
 
             AbstractCustomScoreboard sb = ent.getValue();
 
@@ -303,7 +302,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         endTimer.start();
 
         // Update all scoreboards
-        for(Map.Entry<MPlayer, AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
+        for(java.util.Map.Entry<MPlayer, AbstractCustomScoreboard> ent : scoreboards.entrySet()) {
 
             AbstractCustomScoreboard sb = ent.getValue();
 
@@ -402,7 +401,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     }
 
 
-    protected abstract void loadWorld(AbstractMap map, Runnable callback);
+    protected abstract void loadWorld(Map map, Runnable callback);
     protected abstract void unloadWorld();
 
     protected abstract void playTickSound();
@@ -454,19 +453,19 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         String out;
         if(optional == null) {
 
-            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
+            if(prov.hasKey((out = lobby.getGameType().getId() + "." + key), player)) {
                 return out;
             }
 
         } else {
 
-            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + optional.getId()), player)) {
+            if(prov.hasKey((out = lobby.getGameType().getId() + "." + key + "." + optional.getId()), player)) {
                 return out;
 
-            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
+            } else if(prov.hasKey((out = lobby.getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
                 return out;
 
-            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
+            } else if(prov.hasKey((out = lobby.getGameType().getId() + "." + key), player)) {
                 return out;
 
             } else if(prov.hasKey((out = "game." + key + "." + optional.getId()), player)) {

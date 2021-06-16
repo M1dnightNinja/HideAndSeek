@@ -12,7 +12,7 @@ import me.m1dnightninja.midnightcore.api.text.MStyle;
 import java.io.File;
 import java.util.*;
 
-public abstract class AbstractMap {
+public class Map {
 
     protected final String id;
     protected final File mapFolder;
@@ -53,7 +53,8 @@ public abstract class AbstractMap {
     protected String resPack;
     protected String resPackHash;
 
-    public AbstractMap(String id, File mapFolder, Vec3d hiderSpawn, Vec3d seekerSpawn) {
+    public Map(String id, File mapFolder, Vec3d hiderSpawn, Vec3d seekerSpawn) {
+
         this.id = id;
         this.mapFolder = mapFolder;
         this.worldFolder = new File(mapFolder, "world");
@@ -192,8 +193,14 @@ public abstract class AbstractMap {
 
     }
 
-    public abstract boolean canEdit(MPlayer u);
+    public boolean canEdit(MPlayer u) {
 
+        return u.getUUID().equals(author) || editors.contains(u.getUUID()) || u.hasPermission("hideandseek.edit." + getId());
+    }
+
+    public MItemStack getDisplayItem() {
+        return displayItem.copy();
+    }
 
     public void fromConfig(ConfigSection sec) {
 
@@ -318,9 +325,33 @@ public abstract class AbstractMap {
             }
         }
 
+        if(sec.has("classes", List.class)) {
+            for(AbstractClass clazz : sec.getListFiltered("classes", AbstractClass.class)) {
+
+                mapClasses.put(clazz.getId(), clazz);
+            }
+        }
+
+        for(PositionType type : PositionType.values()) {
+            if(sec.has(type.getId(), ConfigSection.class)) {
+                positionData.put(type, PositionData.parse(sec.getSection(type.getId()), type, this));
+            }
+        }
+
     }
 
-    public static MItemStack getDisplayStack(AbstractMap map) {
+    public static Map parse(ConfigSection sec, String id, File f) {
+
+        Vec3d hiderSpawn = Vec3d.parse(sec.getString("hider_spawn"));
+        Vec3d seekerSpawn = Vec3d.parse(sec.getString("seeker_spawn"));
+
+        Map out = new Map(id, f, hiderSpawn, seekerSpawn);
+        out.fromConfig(sec);
+
+        return out;
+    }
+
+    public static MItemStack getDisplayStack(Map map) {
 
         return map.displayItem.copy();
     }

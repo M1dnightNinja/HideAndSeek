@@ -1,11 +1,12 @@
 package me.m1dnightninja.hideandseek.fabric.game;
 
 import me.m1dnightninja.hideandseek.api.*;
-import me.m1dnightninja.hideandseek.api.game.AbstractMap;
+import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.hideandseek.api.game.PositionData;
 import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.PositionType;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
+import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
 import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
 import net.minecraft.ChatFormatting;
@@ -16,9 +17,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
-import org.apache.commons.lang3.RandomStringUtils;
 
-import java.util.Collections;
 import java.util.HashMap;
 
 public class MapInstance {
@@ -26,7 +25,7 @@ public class MapInstance {
     private static final String emptyResPack = "https://github.com/M1dnightNinja/HideAndSeek/blob/master/empty.zip?raw=true";
     private static final String emptyHash = "F8CC3481867628951AD312B9FB886223856F7AB0";
 
-    private final AbstractMap base;
+    private final Map base;
     private final ServerLevel world;
 
     private final Location hiderSpawn;
@@ -37,7 +36,7 @@ public class MapInstance {
 
     private final AbstractSession session;
 
-    public MapInstance(AbstractSession session, AbstractMap base, ServerLevel world, boolean createTeams) {
+    public MapInstance(AbstractSession session, Map base, ServerLevel world, boolean createTeams) {
         this.base = base;
         this.world = world;
         this.session = session;
@@ -52,7 +51,7 @@ public class MapInstance {
                 PositionData data = base.getData(t);
                 if (data == null) continue;
 
-                PlayerTeam team = new PlayerTeam(scoreboard, RandomStringUtils.random(16, true, false));
+                PlayerTeam team = new PlayerTeam(scoreboard, AbstractCustomScoreboard.generateRandomId());
                 team.setColor(ChatFormatting.getById(data.getColor().toRGBI()));
 
                 if (!t.isSeeker()) {
@@ -66,7 +65,7 @@ public class MapInstance {
                     ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                     if(pl == null) continue;
 
-                    pl.connection.send(new ClientboundSetPlayerTeamPacket(team, 0));
+                    pl.connection.send(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true));
                 }
             }
         }
@@ -84,7 +83,7 @@ public class MapInstance {
         return scoreboard;
     }
 
-    public AbstractMap getBaseMap() {
+    public Map getBaseMap() {
         return base;
     }
 
@@ -109,7 +108,7 @@ public class MapInstance {
                 ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                 if(pl == null) continue;
 
-                pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name), 3));
+                pl.connection.send(ClientboundSetPlayerTeamPacket.createPlayerPacket(t, name, ClientboundSetPlayerTeamPacket.Action.ADD));
             }
         }
     }
@@ -123,7 +122,7 @@ public class MapInstance {
                     ServerPlayer pl = ((FabricPlayer) u).getMinecraftPlayer();
                     if(pl == null) continue;
 
-                    pl.connection.send(new ClientboundSetPlayerTeamPacket(t, Collections.singletonList(name),4));
+                    pl.connection.send(ClientboundSetPlayerTeamPacket.createPlayerPacket(t, name, ClientboundSetPlayerTeamPacket.Action.REMOVE));
                 }
             }
         }
@@ -132,16 +131,16 @@ public class MapInstance {
     public void onJoin(ServerPlayer pl) {
         if(getBaseMap().getResourcePack() != null) {
             HideAndSeekAPI.getLogger().warn("Sending pack to " + pl.getName());
-            pl.connection.send(new ClientboundResourcePackPacket(getBaseMap().getResourcePack(), getBaseMap().getResourcePackHash()));
+            pl.connection.send(new ClientboundResourcePackPacket(getBaseMap().getResourcePack(), getBaseMap().getResourcePackHash(), true, null));
         }
     }
 
     public void onLeave(ServerPlayer pl) {
         for(PlayerTeam t : teams.values()) {
-            pl.connection.send(new ClientboundSetPlayerTeamPacket(t, 1));
+            pl.connection.send(ClientboundSetPlayerTeamPacket.createRemovePacket(t));
         }
         if(getBaseMap().getResourcePack() != null) {
-            pl.connection.send(new ClientboundResourcePackPacket(emptyResPack, emptyHash));
+            pl.connection.send(new ClientboundResourcePackPacket(emptyResPack, emptyHash, true, null));
         }
     }
 

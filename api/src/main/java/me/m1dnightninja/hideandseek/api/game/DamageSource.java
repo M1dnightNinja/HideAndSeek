@@ -22,7 +22,8 @@ public enum DamageSource {
     FALLING_BLOCK("fallingBlock"),
     DRAGON_BREATH("dragonBreath"),
     DRY_OUT("dryout"),
-    SWEET_BERRY_BUSH("sweetBerryBush");
+    SWEET_BERRY_BUSH("sweetBerryBush"),
+    FREEZE("freeze");
 
     String translateName;
 
