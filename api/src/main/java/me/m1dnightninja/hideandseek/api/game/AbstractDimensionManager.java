@@ -76,21 +76,22 @@ public abstract class AbstractDimensionManager<T> {
 
     private void deleteDirectory(File f) throws IOException {
 
-        if(!f.exists() || !f.isDirectory()) throw new IOException();
+        if(!f.exists() || !f.isDirectory()) throw new IOException("Tried to delete invalid file!");
 
         File[] files = f.listFiles();
         if(files != null) {
 
             for(File f1 : files) {
+                if(!f1.exists()) return;
                 if (f1.isDirectory()) {
                     deleteDirectory(f1);
                 } else {
-                    if (!f1.delete()) throw new IOException();
+                    if (!f1.delete()) throw new IOException("Unable to delete file " + f1.getName() + "!");
                 }
             }
         }
 
-        if(!f.delete()) throw new IOException();
+        if(!f.delete()) throw new IOException("Could not delete directory " + f.getName() + "!");
     }
 
     private void copyFile(File source, File dest) throws IOException {
@@ -124,9 +125,9 @@ public abstract class AbstractDimensionManager<T> {
 
                 File nf = new File(dest, f.getName());
                 if(f.isDirectory()) {
-                    copyFile(f, nf);
-                } else {
                     copyDirectory(f, nf);
+                } else {
+                    copyFile(f, nf);
                 }
             }
         }

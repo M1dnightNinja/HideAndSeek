@@ -21,15 +21,12 @@ public abstract class AbstractClass {
     protected final List<MItemStack> items = new ArrayList<>();
     protected final HashMap<String, MItemStack> equipment = new HashMap<>();
 
-    protected final HashMap<PositionType, String> tempEquivalencies = new HashMap<>();
-    protected final HashMap<PositionType, AbstractClass> equivalencies = new HashMap<>();
+    protected final HashMap<PositionType, String> equivalencies = new HashMap<>();
 
     protected final HashMap<CommandActivationPoint, List<String>> commands = new HashMap<>();
 
     protected boolean taggable = true;
     protected String permission = null;
-
-    private boolean dirty = true;
 
     public AbstractClass(String id) {
         this.id = id;
@@ -53,20 +50,9 @@ public abstract class AbstractClass {
         return skins;
     }
 
-    public AbstractClass getEquivalent(PositionType type) {
-        if(dirty) updateEquivalencies();
-        return equivalencies.get(type);
-    }
+    public AbstractClass getEquivalent(PositionType type, Map map) {
 
-    public void updateEquivalencies() {
-        equivalencies.clear();
-
-        for(HashMap.Entry<PositionType, String> ent : tempEquivalencies.entrySet()) {
-            AbstractClass clazz = HideAndSeekAPI.getInstance().getRegistry().getClass(ent.getValue());
-            equivalencies.put(ent.getKey(), clazz);
-        }
-        tempEquivalencies.clear();
-        dirty = false;
+        return map.getClassOrGlobal(equivalencies.get(type));
     }
 
     public void executeCommands(CommandActivationPoint point, MPlayer player, MPlayer tagger) {
@@ -97,7 +83,6 @@ public abstract class AbstractClass {
     public void fromConfig(ConfigSection sec) {
 
         skins.clear();
-        tempEquivalencies.clear();
         equivalencies.clear();
 
         if(sec.has("name")) {
@@ -136,7 +121,7 @@ public abstract class AbstractClass {
 
                 for(PositionType t : PositionType.values()) {
                     if(t.getId().equals(ent.getKey())) {
-                        tempEquivalencies.put(t, (String) ent.getValue());
+                        equivalencies.put(t, (String) ent.getValue());
                     }
                 }
             }
@@ -159,9 +144,6 @@ public abstract class AbstractClass {
         if(sec.has("permission", String.class)) {
             permission = sec.getString("permission");
         }
-
-        dirty = true;
-
     }
 
     private static MItemStack parseItem(ConfigSection sec) {

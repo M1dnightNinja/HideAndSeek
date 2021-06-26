@@ -1,3 +1,4 @@
 {
-  "enable-anti-cheat": false
+  "enable_anti_cheat": false,
+  "preferred_classes_item": "minecraft:diamond"
 }

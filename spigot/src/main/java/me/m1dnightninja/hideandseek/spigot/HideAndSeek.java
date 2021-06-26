@@ -88,7 +88,7 @@ public class HideAndSeek extends JavaPlugin {
 
         HideAndSeekAPI.getLogger().warn("registering gamemodes");
 
-        HideAndSeekAPI.getInstance().getRegistry().registerGameType("classic", () -> new GameType("classic", HideAndSeekAPI.getInstance().getLangProvider().getMessage("gamemode.classic", (MPlayer) null)) {
+        HideAndSeekAPI.getInstance().getRegistry().registerGameType(new GameType("classic", HideAndSeekAPI.getInstance().getLangProvider().getMessage("gamemode.classic", (MPlayer) null)) {
             @Override
             public AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, Map map) {
                 return new ClassicGameMode(lobby, player, map);

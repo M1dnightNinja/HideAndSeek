@@ -163,7 +163,7 @@ public class MainCommand {
 
         for(ServerPlayer player : players) {
             if(!sess.addPlayer(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID()))) {
-                LangModule.sendCommandSuccess(context, HideAndSeekAPI.getInstance().getLangProvider(), false,"command.error.cannot_add", player);
+                LangModule.sendCommandSuccess(context, HideAndSeekAPI.getInstance().getLangProvider(), false,"command.error.cannot_add", FabricPlayer.wrap(player));
             }
         }
 
@@ -174,11 +174,11 @@ public class MainCommand {
 
         for(ServerPlayer player : players) {
 
-            MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID());
+            MPlayer pl = FabricPlayer.wrap(player);
 
             AbstractSession sess = HideAndSeekAPI.getInstance().getSessionManager().getSession(pl);
             if(sess == null) {
-                LangModule.sendCommandSuccess(context, HideAndSeekAPI.getInstance().getLangProvider(), false,"command.error.cannot_remove", player);
+                LangModule.sendCommandSuccess(context, HideAndSeekAPI.getInstance().getLangProvider(), false,"command.error.cannot_remove", pl);
             } else {
                 sess.removePlayer(pl);
             }
@@ -258,7 +258,7 @@ public class MainCommand {
 
         for(ServerPlayer player : players) {
             if(!session.addPlayer(MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(player.getUUID()))) {
-                LangModule.sendCommandFailure(context, HideAndSeekAPI.getInstance().getLangProvider(), "command.error.cannot_add", player);
+                LangModule.sendCommandFailure(context, HideAndSeekAPI.getInstance().getLangProvider(), "command.error.cannot_add", FabricPlayer.wrap(player));
             }
         }
 

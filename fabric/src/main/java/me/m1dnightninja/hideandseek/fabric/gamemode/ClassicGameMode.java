@@ -6,23 +6,17 @@ import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.hideandseek.common.AbstractClassicGameMode;
 import me.m1dnightninja.hideandseek.fabric.event.HideAndSeekRoleUpdatedEvent;
 import me.m1dnightninja.hideandseek.fabric.game.MapInstance;
-import me.m1dnightninja.hideandseek.fabric.mixin.AccessorMoveEntityPacket;
-import me.m1dnightninja.hideandseek.fabric.mixin.AccessorPlayerSpawnPacket;
 import me.m1dnightninja.hideandseek.fabric.util.FireworkUtil;
-import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.fabric.api.Location;
-import me.m1dnightninja.midnightcore.fabric.api.event.PacketSendEvent;
 import me.m1dnightninja.midnightcore.fabric.event.Event;
 import me.m1dnightninja.midnightcore.fabric.player.FabricPlayer;
-import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.FireworkRocketItem;
 
 import java.util.*;
@@ -39,64 +33,6 @@ public class ClassicGameMode extends AbstractClassicGameMode {
         super(lobby, seeker, map);
 
         useAntiCheat = HideAndSeekAPI.getInstance().getMainSettings().isAntiCheatEnabled();
-
-        Event.register(PacketSendEvent.class, this, event -> {
-            if(state == ClassicGameState.UNINITIALIZED || (!useAntiCheat && state != ClassicGameState.HIDING)) return;
-
-            MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(event.getPlayer().getUUID());
-
-            if(event.getPacket() instanceof ClientboundAddPlayerPacket) {
-
-
-                UUID id = ((AccessorPlayerSpawnPacket) event.getPacket()).getPlayerId();
-                MPlayer other = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(id);
-
-                if(hidden.containsKey(pl) && hidden.get(pl).contains(other)) {
-                    event.setCancelled(true);
-                }
-            }
-            if(event.getPacket() instanceof ClientboundMoveEntityPacket) {
-
-                int id = ((AccessorMoveEntityPacket) event.getPacket()).getEntityId();
-                Entity ent = currentMap.getWorld().getEntity(id);
-                if(ent == null) return;
-
-                MPlayer other = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(ent.getUUID());
-
-                if(ent instanceof ServerPlayer && hidden.containsKey(pl) && hidden.get(pl).contains(other)) {
-                    event.setCancelled(true);
-                }
-
-            }
-        });
-    }
-
-    @Override
-    protected void startSeeking() {
-        super.startSeeking();
-
-        if(!useAntiCheat) {
-
-            for(MPlayer u : hidden.keySet()) {
-
-                ServerPlayer player = ((FabricPlayer) u).getMinecraftPlayer();
-                if(player == null) continue;
-
-                for(MPlayer uu : hidden.get(u)) {
-
-                    ServerPlayer other = ((FabricPlayer) uu).getMinecraftPlayer();
-                    if(other == null) continue;
-
-                    player.connection.send(new ClientboundAddPlayerPacket(other));
-                    player.connection.send(new ClientboundSetEntityDataPacket(other.getId(), other.getEntityData(), true));
-                }
-            }
-
-            hidden.clear();
-        }
-
-        Event.unregisterAll(this);
-
     }
 
     @Override
@@ -119,7 +55,7 @@ public class ClassicGameMode extends AbstractClassicGameMode {
             for(Region reg : map.getRegions()) {
                 if(reg.getDenied().contains(ent.getValue()) && reg.isInRegion(newLoc)) {
 
-                    HideAndSeekAPI.getInstance().getLangProvider().sendMessage(getKey("deny_region_entry", ent.getKey(), ent.getValue()), ent.getKey(), player, reg);
+                    HideAndSeekAPI.getInstance().getLangProvider().sendMessage(getKey("deny_region_entry", ent.getKey(), ent.getValue()), ent.getKey(), map.getData(ent.getValue()), reg);
                     toTeleport.add(ent.getKey());
                 }
             }
@@ -140,13 +76,12 @@ public class ClassicGameMode extends AbstractClassicGameMode {
 
                     if(hidden.get(ent.getKey()).contains(ent1.getKey()) && player.hasLineOfSight(other)) {
                         hidden.get(ent.getKey()).remove(ent1.getKey());
-                        player.connection.send(new ClientboundAddPlayerPacket(other));
-                        player.connection.send(new ClientboundSetEntityDataPacket(other.getId(), other.getEntityData(), true));
+                        vanishModule.showPlayerFor(ent1.getKey(), ent.getKey());
                     }
 
                     if(!hidden.get(ent.getKey()).contains(ent1.getKey()) && !player.hasLineOfSight(other)) {
                         hidden.get(ent.getKey()).add(ent1.getKey());
-                        player.connection.send(new ClientboundRemoveEntityPacket(other.getId()));
+                        vanishModule.hidePlayerFor(ent1.getKey(), ent.getKey());
                     }
 
                 }

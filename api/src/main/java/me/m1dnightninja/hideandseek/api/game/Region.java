@@ -3,6 +3,7 @@ package me.m1dnightninja.hideandseek.api.game;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.config.ConfigSerializer;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,7 @@ public class Region {
             Region out = new Region(id, pos, size);
 
             if(sec.has("name", String.class)) {
-                out.display = sec.getString("name");
+                out.display = MComponent.Serializer.parse(sec.getString("name"));
             }
 
             if(sec.has("denied", List.class)) {
@@ -44,7 +45,7 @@ public class Region {
             out.set("id", reg.id);
             out.set("position", reg.pos.toString());
             out.set("size", reg.size.toString());
-            out.set("name", reg.display);
+            out.set("name", MComponent.Serializer.toJsonString(reg.display));
 
             List<String> denied = new ArrayList<>();
             for(PositionType t : reg.denied) {
@@ -63,13 +64,13 @@ public class Region {
 
     private final List<PositionType> denied = new ArrayList<>();
 
-    private String display;
+    private MComponent display;
 
     public Region(String id, Vec3d pos, Vec3d size) {
         this.id = id;
         this.pos = pos;
         this.size = size;
-        this.display = id;
+        this.display = MComponent.createTextComponent(id);
     }
 
     public String getId() {
@@ -80,11 +81,11 @@ public class Region {
         return denied;
     }
 
-    public String getDisplay() {
+    public MComponent getDisplay() {
         return display;
     }
 
-    public void setDisplay(String display) {
+    public void setDisplay(MComponent display) {
         this.display = display;
     }
 

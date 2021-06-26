@@ -5,6 +5,7 @@ import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.hideandseek.api.game.PositionData;
 import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.hideandseek.api.game.PositionType;
+import me.m1dnightninja.hideandseek.fabric.HideAndSeek;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.api.text.AbstractCustomScoreboard;
 import me.m1dnightninja.midnightcore.fabric.api.Location;

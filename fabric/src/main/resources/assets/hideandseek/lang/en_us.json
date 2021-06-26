@@ -23,7 +23,7 @@
   "game.tag": "%hideandseek_position_color%%player_name% &fwas tagged by %tagger_color%%tagger_name%",
   "game.remains": "! %hider_count% %hideandseek_position_name_plural% remain!",
   "game.remains.singular": "! %hideandseek_map_seeker_color%1 %hideandseek_position_name% &fremains!",
-  "command.reload.result": "&aHideAndSeek reloaded in &f%count%&ams!",
+  "command.reload.result": "&aHideAndSeek reloaded in &f%time%&ams!",
   "command.edit.loading": "&7Loading map...",
   "command.error.no_lobbies": "&cThere are no available lobbies!",
   "command.error.invalid_lobby": "&cThat is not a valid lobby!",

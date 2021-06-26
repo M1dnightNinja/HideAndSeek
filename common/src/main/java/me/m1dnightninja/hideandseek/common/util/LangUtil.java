@@ -20,8 +20,8 @@ public class LangUtil {
         mod.registerInlinePlaceholderSupplier("hideandseek_lobby_max_players", PlaceholderSupplier.create(Lobby.class, lby -> lby.getMaxPlayers() + ""));
 
         mod.registerPlaceholderSupplier("hideandseek_lobby_name", PlaceholderSupplier.create(Lobby.class, Lobby::getName));
-        mod.registerPlaceholderSupplier("hideandseek_lobby_game_mode_name", PlaceholderSupplier.create(AbstractLobbySession.class, lby -> lby.getGameType().getName()));
-        mod.registerInlinePlaceholderSupplier("hideandseek_lobby_game_mode", PlaceholderSupplier.create(AbstractLobbySession.class, lby -> lby.getGameType().getId()));
+        mod.registerPlaceholderSupplier("hideandseek_lobby_game_mode_name", PlaceholderSupplier.create(Lobby.class, lby -> lby.getGameType().getName()));
+        mod.registerInlinePlaceholderSupplier("hideandseek_lobby_game_mode", PlaceholderSupplier.create(Lobby.class, lby -> lby.getGameType().getId()));
 
         mod.registerInlinePlaceholderSupplier("hideandseek_map_id", PlaceholderSupplier.create(Map.class, Map::getId));
         mod.registerInlinePlaceholderSupplier("hideandseek_map_hide_time", PlaceholderSupplier.create(Map.class, obj -> obj.getHideTime() + ""));
@@ -47,6 +47,8 @@ public class LangUtil {
         mod.registerPlaceholderSupplier("hideandseek_position_name", PlaceholderSupplier.create(PositionData.class, PositionData::getName));
         mod.registerPlaceholderSupplier("hideandseek_position_name_plural", PlaceholderSupplier.create(PositionData.class, PositionData::getPluralName));
         mod.registerPlaceholderSupplier("hideandseek_position_name_proper", PlaceholderSupplier.create(PositionData.class, PositionData::getProperName));
+
+        mod.registerPlaceholderSupplier("hideandseek_class_name", PlaceholderSupplier.create(AbstractClass.class, AbstractClass::getName));
 
         mod.registerInlinePlaceholderSupplier("hideandseek_player_position_type", PlaceholderSupplier.create(MPlayer.class, obj -> {
             AbstractLobbySession sess = (AbstractLobbySession) HideAndSeekAPI.getInstance().getSessionManager().getSession(obj);
@@ -74,7 +76,7 @@ public class LangUtil {
         }));
 
         mod.registerInlinePlaceholderSupplier("hideandseek_region_id", PlaceholderSupplier.create(Region.class, Region::getId));
-        mod.registerPlaceholderSupplier("hideandseek_region_name", PlaceholderSupplier.create(Region.class, reg -> MComponent.Serializer.parse(reg.getDisplay())));
+        mod.registerPlaceholderSupplier("hideandseek_region_name", PlaceholderSupplier.create(Region.class, Region::getDisplay));
     }
 
 }

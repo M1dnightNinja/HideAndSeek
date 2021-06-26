@@ -2,10 +2,13 @@ package me.m1dnightninja.hideandseek.api.core;
 
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
 import me.m1dnightninja.midnightcore.api.config.FileConfig;
+import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 
 public class MainSettings {
 
     private boolean enableAntiCheat = true;
+    private MIdentifier preferredClassesItem = MIdentifier.create("minecraft", "diamond");
+
     private final FileConfig fileConfig;
     private final ConfigSection defaults;
 
@@ -24,7 +27,8 @@ public class MainSettings {
 
         ConfigSection out = fileConfig.getRoot();
 
-        out.set("enable-anti-cheat", enableAntiCheat);
+        out.set("enable_anti_cheat", enableAntiCheat);
+        out.set("preferred_classes_item", preferredClassesItem);
 
         fileConfig.save();
     }
@@ -47,12 +51,24 @@ public class MainSettings {
         this.enableAntiCheat = enableAntiCheat;
     }
 
+    public MIdentifier getPreferredClassesItem() {
+        return preferredClassesItem;
+    }
+
+    public void setPreferredClassesItem(MIdentifier preferredClassesItem) {
+        this.preferredClassesItem = preferredClassesItem;
+    }
+
     public void fromConfig(ConfigSection section) {
 
         if(section == null) return;
 
-        if(section.has("enable-anti-cheat")) {
-            enableAntiCheat = section.getBoolean("enable-anti-cheat");
+        if(section.has("enable_anti_cheat")) {
+            enableAntiCheat = section.getBoolean("enable_anti_cheat");
+        }
+
+        if(section.has("preferred_classes_item", MIdentifier.class)) {
+            preferredClassesItem = section.get("preferred_classes_item", MIdentifier.class);
         }
 
     }

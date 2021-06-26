@@ -11,7 +11,6 @@ import me.m1dnightninja.midnightcore.api.inventory.MItemStack;
 import me.m1dnightninja.midnightcore.api.module.IPlayerDataModule;
 import me.m1dnightninja.midnightcore.api.module.skin.Skin;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
-import me.m1dnightninja.midnightcore.api.registry.MIdentifier;
 import me.m1dnightninja.midnightcore.api.text.MComponent;
 
 import java.util.ArrayList;
@@ -20,7 +19,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class HideAndSeekRegistry {
 
@@ -28,7 +26,7 @@ public class HideAndSeekRegistry {
     private final HashMap<String, Lobby> lobbies = new HashMap<>();
     private final HashMap<String, AbstractClass> classes = new HashMap<>();
     private final HashMap<String, SavedSkin> skins = new HashMap<>();
-    private final HashMap<String, Supplier<GameType>> gameTypes = new HashMap<>();
+    private final HashMap<String, GameType> gameTypes = new HashMap<>();
 
     private final HashMap<UUID, HashMap<Map, HashMap<PositionType, AbstractClass>>> preferredClasses = new HashMap<>();
 
@@ -76,10 +74,10 @@ public class HideAndSeekRegistry {
         skins.put(skin.getId(), skin);
     }
 
-    public void registerGameType(String id, Supplier<GameType> type) {
+    public void registerGameType(GameType type) {
 
-        if(gameTypes.containsKey(id)) return;
-        gameTypes.put(id, type);
+        if(gameTypes.containsKey(type.getId())) return;
+        gameTypes.put(type.getId(), type);
     }
 
 
@@ -117,7 +115,7 @@ public class HideAndSeekRegistry {
         return s;
     }
 
-    public Supplier<GameType> getGameType(String id) {
+    public GameType getGameType(String id) {
         return gameTypes.get(id);
     }
 
@@ -315,7 +313,7 @@ public class HideAndSeekRegistry {
         MComponent title = HideAndSeekAPI.getInstance().getLangProvider().getMessage("gui.customize.title", player);
         AbstractInventoryGUI gui = MidnightCoreAPI.getInstance().createInventoryGUI(title);
 
-        MItemStack customize = MItemStack.Builder.of(MIdentifier.parseOrDefault("diamond")).withName(HideAndSeekAPI.getInstance().getLangProvider().getMessage("gui.customize.preferred_classes", player)).build();
+        MItemStack customize = MItemStack.Builder.of(HideAndSeekAPI.getInstance().getMainSettings().getPreferredClassesItem()).withName(HideAndSeekAPI.getInstance().getLangProvider().getMessage("gui.customize.preferred_classes", player)).build();
         gui.setItem(customize, 4, (click, user) ->
             openMapGUI(user, map -> {
                 for(PositionType t : PositionType.values()) {

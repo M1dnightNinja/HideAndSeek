@@ -6,6 +6,7 @@ import me.m1dnightninja.hideandseek.api.game.Map;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.math.Color;
 import me.m1dnightninja.midnightcore.api.math.Vec3d;
+import me.m1dnightninja.midnightcore.api.module.IVanishModule;
 import me.m1dnightninja.midnightcore.api.module.lang.CustomPlaceholder;
 import me.m1dnightninja.midnightcore.api.module.lang.CustomPlaceholderInline;
 import me.m1dnightninja.midnightcore.api.module.lang.ILangProvider;
@@ -37,12 +38,16 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
     private AbstractTimer seekerTimer;
     private AbstractTimer hiderTimer;
 
+    protected final IVanishModule vanishModule;
+
     // Constructor
     protected AbstractClassicGameMode(AbstractLobbySession lobby, MPlayer seeker, Map map) {
         super(lobby);
 
         this.seeker = seeker == null ? getPlayers().get(HideAndSeekAPI.getInstance().getRandom().nextInt(getPlayerCount())) : seeker;
         this.map = map == null ? lobby.getLobby().getMaps().get(HideAndSeekAPI.getInstance().getRandom().nextInt(lobby.getLobby().getMaps().size())) : map;
+
+        this.vanishModule = MidnightCoreAPI.getInstance().getModule(IVanishModule.class);
 
     }
 
@@ -66,6 +71,16 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
 
         // Change state
         state = ClassicGameState.HIDING;
+
+        // Create a timer for when the seeker will be released
+        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null,null), (MPlayer) null, this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, timeLeft -> {
+            if(timeLeft > 0 && timeLeft < 6) {
+                playTickSound();
+            } else if(timeLeft == 0) {
+                playReleaseSound();
+                startSeeking();
+            }
+        });
 
         // Loop through each player
         for(MPlayer u : getPlayers()) {
@@ -110,24 +125,13 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
                 sb.addPlayer(u);
                 scoreboards.put(u, sb);
 
+                startTimer.addPlayer(u);
+
+                if(!positions.get(u).isSeeker()) vanishModule.hidePlayerFor(u, seeker);
+
             } catch(Throwable th) {
                 th.printStackTrace();
             }
-        }
-
-        // Create a timer for when the seeker will be released
-        AbstractTimer startTimer = MidnightCoreAPI.getInstance().createTimer(HideAndSeekAPI.getInstance().getLangProvider().getMessage(getKey("hide_timer", null,null), (MPlayer) null, this, lobby, map.getData(PositionType.MAIN_SEEKER)), map.getHideTime(), false, timeLeft -> {
-            if(timeLeft > 0 && timeLeft < 6) {
-                playTickSound();
-            } else if(timeLeft == 0) {
-                playReleaseSound();
-                startSeeking();
-            }
-        });
-
-        // Show the timer to all players in the game
-        for(MPlayer u : getPlayers()) {
-            startTimer.addPlayer(u);
         }
 
         // Keep track of the timer, start the timer
@@ -168,6 +172,13 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
                     break;
                 case MAIN_SEEKER:
                     mainSeekerTimer.addPlayer(u);
+            }
+        }
+
+        for(MPlayer pl : getPlayersFiltered(pl -> positions.get(pl).isSeeker())) {
+            for(MPlayer hid : getPlayersFiltered(hid -> !positions.get(hid).isSeeker())) {
+                MidnightCoreAPI.getLogger().warn("Showing player " + hid.getName() + " for " + pl.getName());
+                vanishModule.showPlayerFor(hid, pl);
             }
         }
 
@@ -443,6 +454,7 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         return super.countPosition(t);
     }
 
+
     // Find the most specific key for sending lang entries to players
     protected String getKey(String key, MPlayer player, PositionType optional) {
 
@@ -453,19 +465,19 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
         String out;
         if(optional == null) {
 
-            if(prov.hasKey((out = lobby.getGameType().getId() + "." + key), player)) {
+            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
                 return out;
             }
 
         } else {
 
-            if(prov.hasKey((out = lobby.getGameType().getId() + "." + key + "." + optional.getId()), player)) {
+            if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + optional.getId()), player)) {
                 return out;
 
-            } else if(prov.hasKey((out = lobby.getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
+            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key + "." + (optional.isSeeker() ? "seeker" : "hider")), player)) {
                 return out;
 
-            } else if(prov.hasKey((out = lobby.getGameType().getId() + "." + key), player)) {
+            } else if(prov.hasKey((out = lobby.getLobby().getGameType().getId() + "." + key), player)) {
                 return out;
 
             } else if(prov.hasKey((out = "game." + key + "." + optional.getId()), player)) {
@@ -476,7 +488,8 @@ public abstract class AbstractClassicGameMode extends AbstractGameInstance {
             }
         }
 
-        return "game." + key;
+        out = "game." + key;
+        return out;
     }
 
     // Callback when a player is removed from the game

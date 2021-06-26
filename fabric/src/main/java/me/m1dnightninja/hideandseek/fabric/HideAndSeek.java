@@ -14,6 +14,7 @@ import me.m1dnightninja.midnightcore.api.ILogger;
 import me.m1dnightninja.midnightcore.api.MidnightCoreAPI;
 import me.m1dnightninja.midnightcore.api.config.ConfigProvider;
 import me.m1dnightninja.midnightcore.api.config.ConfigSection;
+import me.m1dnightninja.midnightcore.api.module.lang.ILangModule;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 import me.m1dnightninja.midnightcore.fabric.Logger;
 import me.m1dnightninja.midnightcore.fabric.MidnightCore;
@@ -49,6 +50,8 @@ public class HideAndSeek implements MidnightCoreModInitializer {
         if(!configFolder.exists() && !configFolder.mkdirs()) {
             logger.warn("Unable to create config folder!");
         }
+
+
     }
 
     @Override
@@ -66,7 +69,7 @@ public class HideAndSeek implements MidnightCoreModInitializer {
         }
 
         MidnightCoreAPI.getConfigRegistry().registerSerializer(AbstractClass.class, GameClass.SERIALIZER);
-        LangUtil.registerPlaceholders(api.getLangProvider().getModule());
+        LangUtil.registerPlaceholders(midnightCoreAPI.getModule(ILangModule.class));
 
         api = new HideAndSeekAPI(logger, configFolder, configDefaults, langDefaults, new DimensionManager());
         loadGameModes();
@@ -110,7 +113,7 @@ public class HideAndSeek implements MidnightCoreModInitializer {
     }
 
     private void loadGameModes() {
-        api.getRegistry().registerGameType("classic", () -> new GameType("classic", HideAndSeekAPI.getInstance().getLangProvider().getMessage("gamemode.classic", (MPlayer) null)) {
+        api.getRegistry().registerGameType(new GameType("classic", HideAndSeekAPI.getInstance().getLangProvider().getMessage("gamemode.classic", (MPlayer) null)) {
             @Override
             public AbstractGameInstance create(AbstractLobbySession lobby, MPlayer player, Map map) {
                 return new ClassicGameMode(lobby, player, map);

@@ -4,8 +4,10 @@ import me.m1dnightninja.hideandseek.api.HideAndSeekAPI;
 import me.m1dnightninja.hideandseek.api.core.AbstractSession;
 import me.m1dnightninja.midnightcore.api.player.MPlayer;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Function;
 
 public abstract class AbstractGameInstance extends AbstractSession {
 
@@ -41,6 +43,16 @@ public abstract class AbstractGameInstance extends AbstractSession {
         return lobby.getPlayerCount();
     }
 
+    public List<MPlayer> getPlayersFiltered(Function<MPlayer, Boolean> func) {
+
+        List<MPlayer> out = new ArrayList<>();
+        for(MPlayer pl : getPlayers()) {
+            if(func.apply(pl)) out.add(pl);
+        }
+
+        return out;
+    }
+
     protected void setPosition(MPlayer u, PositionType type) {
 
         PositionType old = positions.get(u);
@@ -48,7 +60,7 @@ public abstract class AbstractGameInstance extends AbstractSession {
         AbstractClass newClass = null;
         AbstractClass clazz = classes.get(u);
         if(clazz != null) {
-            newClass = clazz.getEquivalent(type);
+            newClass = clazz.getEquivalent(type, getMap());
         }
 
         if(newClass == null) {

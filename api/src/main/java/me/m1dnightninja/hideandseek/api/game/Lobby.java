@@ -30,7 +30,7 @@ public class Lobby {
     protected int maxPlayers = 16;
 
     protected Color color = new Color(255,255,255);
-    protected Supplier<GameType> gameType;
+    protected GameType gameType;
 
     protected float rotation;
     protected String world;
@@ -67,7 +67,7 @@ public class Lobby {
         return color;
     }
 
-    public Supplier<GameType> getGameType() {
+    public GameType getGameType() {
         return gameType;
     }
 
